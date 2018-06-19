@@ -1,0 +1,6 @@
+[package]
+name = "webservermulti"
+version = "0.1.0"
+authors = ["Christian Johansson <christian@cvj.se>"]
+
+[dependencies]
