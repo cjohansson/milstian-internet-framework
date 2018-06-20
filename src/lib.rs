@@ -55,15 +55,17 @@ type Job = Box<FnBox + Send + 'static>;
 
 impl ThreadPool {
 
-    pub fn execute<F>(&self, f: F)
-    where
-        F: FnOnce() + Send + 'static
+    /// Create a job from a closure and send for execution
+    pub fn execute<F>(&self, f: F) where F: FnOnce() + Send + 'static
     {
+        // Place job inside a Box
         let job = Box::new(f);
 
+        // Send a NewJob Message down the channel
         self.sender.send(Message::NewJob(job)).unwrap();
     }
 
+    /// Create a new mutex channel with specified number of receivers
     pub fn new (size: usize) -> ThreadPool {
         assert!(size > 0);
 
