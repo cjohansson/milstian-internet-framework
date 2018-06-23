@@ -13,9 +13,17 @@ This project is based on the programming exercise *Building a multithreaded web 
 *Start application*
 
 ``` rust
-    Application::new(Config {
+extern crate milstian;
+use milstian::{Application, Config};
+
+...
+
+Application::new(Config {
         limit: 4,
         port: 7878,
         server: String::from("127.0.0.1"),
     });
 ```
+
+## License
+This project is under the **GPLv3** license
