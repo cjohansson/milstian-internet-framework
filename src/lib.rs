@@ -1,118 +1,96 @@
-use std::sync::Arc;
-use std::sync::Mutex;
-use std::sync::mpsc;
-use std::thread;
+pub mod thread;
 
-trait FnBox {
-    fn call_box(self: Box<Self>);
+use std::fs::File;
+use std::io::prelude::*;
+use std::net::TcpListener;
+use std::net::TcpStream;
+use std::time::Duration;
+
+use thread::Pool;
+
+pub struct Config {
+    pub limit: usize,
+    pub port: u32,
+    pub server: String,
 }
 
-impl<F: FnOnce()> FnBox for F {
-    fn call_box(self: Box<F>) {
-        (*self)()
-    }
+pub struct Application {
+    pub config: Config,
 }
+impl Application {
+    pub fn new(config: Config) {
+        let path = format!("{}:{}", &config.server, &config.port);
+        let listener = TcpListener::bind(&path);
 
-pub struct Worker {
-    id: usize,
-    thread: Option<thread::JoinHandle<()>>,
-}
+        match listener {
+            Ok(listener) => {
+                let pool = Pool::new(config.limit);
 
-impl Worker {
-    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
-        let thread = thread::spawn(move || {
-            loop {
-                let message = receiver.lock().unwrap().recv().unwrap();
-
-                match message {
-                    Message::NewJob(job) => {
-                        println!("Worker {} got a job; executing.", id);
-
-                        job.call_box();
-                    },
-                    Message::Terminate => {
-                        println!("Worker {} was told to terminate.", id);
-
-                        break;
+                for stream in listener.incoming() {
+                    match stream {
+                        Ok(stream) => {
+                            pool.execute(|| {
+                                handle_connection(stream);
+                            });
+                        }
+                        Err(e) => {
+                            println!("Failed to listen to incoming stream, error: {}", e);
+                        }
                     }
                 }
             }
-        });
-
-        Worker {
-            id: id,
-            thread: Some(thread),
-        }
-    }
-}
-
-pub struct ThreadPool {
-    workers: Vec<Worker>,
-    sender: mpsc::Sender<Message>,
-}
-
-type Job = Box<FnBox + Send + 'static>;
-
-impl ThreadPool {
-
-    /// Create a job from a closure and send for execution
-    pub fn execute<F>(&self, f: F) where F: FnOnce() + Send + 'static
-    {
-        // Place job inside a Box
-        let job = Box::new(f);
-
-        // Send a NewJob Message down the channel
-        self.sender.send(Message::NewJob(job)).unwrap();
-    }
-
-    /// Create a new mutex channel with specified number of receivers
-    pub fn new (size: usize) -> ThreadPool {
-        assert!(size > 0);
-
-        let (sender, receiver) = mpsc::channel();
-
-        let receiver = Arc::new(Mutex::new(receiver));
-
-        let mut workers = Vec::with_capacity(size);
-
-        for id in 0..size {
-            workers.push(Worker::new(
-                id,
-                Arc::clone(&receiver)
-            ));
-        }
-
-        ThreadPool {
-            workers,
-            sender
-        }
-    }
-}
-
-impl Drop for ThreadPool {
-    fn drop(&mut self) {
-        println!("Sending terminate message to all workers.");
-
-        // Identical number of terminate messages and workers assure
-        // all workers will receive the message
-        for _ in &mut self.workers {
-            self.sender.send(Message::Terminate).unwrap();
-        }
-
-        println!("Shutting down all workers.");
-
-        // Join every workers thread
-        for worker in &mut self.workers {
-            println!("Shutting down worker {}", worker.id);
-
-            if let Some(thread) = worker.thread.take() {
-                thread.join().unwrap();
+            Err(e) => {
+                println!("Failed to bind to server and port, error: {}", e);
             }
         }
     }
 }
 
-enum Message {
-    NewJob(Job),
-    Terminate,
+fn handle_connection(mut stream: TcpStream) {
+    let mut buffer = [0; 512];
+
+    // TODO Handle this unwrap
+    stream.read(&mut buffer).unwrap();
+
+    let get = b"GET / ";
+    let sleep = b"GET /sleep ";
+
+    // TODO Make these more dynamic
+    let (status_line, filename) = if buffer.starts_with(get) {
+        ("200 OK", "index.htm")
+    } else if buffer.starts_with(sleep) {
+        std::thread::sleep(Duration::from_secs(10));
+        ("200 OK", "index.htm")
+    } else {
+        ("404 NOT FOUND", "404.htm")
+    };
+
+    // Read file
+    let filename = format!("html/{}", filename);
+
+    // TODO Handle this unwrap
+    // TODO Make the path more dynamic
+    let mut file = File::open(filename).unwrap();
+
+    // Build response body
+    let mut response_body = String::new();
+
+    // TODO Handle this unwrap
+    file.read_to_string(&mut response_body).unwrap();
+
+    // TODO Make these more dynamic
+    // Build HTTP response headers
+    let mut response_headers = String::new();
+    response_headers.push_str(&format!("HTTP/1.1 {}\r\n", status_line));
+    response_headers.push_str("Content-Type: text/html\r\n");
+
+    // TODO Add more headers here
+    response_headers.push_str("\r\n");
+
+    // Build HTTP response
+    let response = format!("{}{}", response_headers, response_body);
+
+    // Flush HTTP response
+    stream.write(response.as_bytes()).unwrap();
+    stream.flush().unwrap();
 }
