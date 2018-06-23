@@ -1,7 +1,7 @@
 # Milstian - A Rust Web Framework
 
 In progress, primarily used for learning Rust programming. 
-This project is based on the programming exercise "Building a multithreaded web server" from the book "The Rust Programming Language" from "no starch press".
+This project is based on the programming exercise *Building a multithreaded web server* from the book *The Rust Programming Language* (*no starch press 2018*).
 
 ## Milestones
 * Asynchronous web-server
