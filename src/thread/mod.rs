@@ -17,7 +17,7 @@ impl Pool {
         let job = Box::new(f);
 
         // Send a NewJob Message down the channel
-        // TODO Handle this unwrap
+        // If it fails program will crash deliberately
         self.sender.send(Message::NewJob(job)).unwrap();
     }
 
@@ -52,8 +52,9 @@ impl Drop for Pool {
         // Identical number of terminate messages and workers assure
         // all workers will receive the message
         for _ in &mut self.workers {
-            // TODO Handle this unwrap
-            self.sender.send(Message::Terminate).unwrap();
+            if let Err(error) = self.sender.send(Message::Terminate) {
+                println!("Failed to send a termination message, error: {:?}", error);
+            }
         }
 
         println!("Shutting down all workers.");
@@ -63,8 +64,11 @@ impl Drop for Pool {
             println!("Shutting down worker {}", worker.id);
 
             if let Some(thread) = worker.thread.take() {
-                // TODO handle this unwrap
-                thread.join().unwrap();
+                if let Err(error) = thread.join() {
+                    println!("Failed to join thread {:?}, error: {:?}", worker.thread, error);
+                }
+            } else {
+                println!("Failed to take ownership of thread {:?}", worker.thread);
             }
         }
     }
