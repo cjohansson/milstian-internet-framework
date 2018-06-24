@@ -43,6 +43,7 @@ mod config_test {
 
     #[test]
     fn from_env() {
+        // This is expected to work
         let response = Config::from_env(vec![
             String::from("ignore this"),
             String::from("127.0.0.1"),
