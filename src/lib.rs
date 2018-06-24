@@ -37,6 +37,39 @@ impl Config {
     }
 }
 
+#[cfg(test)]
+mod config_test {
+    use super::*;
+
+    #[test]
+    fn from_env() {
+        let response = Config::from_env(vec![
+            String::from("ignore this"),
+            String::from("127.0.0.1"),
+            String::from("7878"),
+            String::from("4"),
+        ]);
+        assert!(response.is_ok());
+
+        // Expected four arguments but received three
+        let response = Config::from_env(vec![
+            String::from("127.0.0.1"),
+            String::from("7878"),
+            String::from("4"),
+        ]);
+        assert!(response.is_err());
+
+        // Expected integer but got string
+        let response = Config::from_env(vec![
+            String::from("ignore this"),
+            String::from("127.0.0.1"),
+            String::from("7878"),
+            String::from("coffee"),
+        ]);
+        assert!(response.is_err());
+    }
+}
+
 pub struct Application {
     pub config: Config,
 }
