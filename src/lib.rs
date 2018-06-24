@@ -8,15 +8,39 @@ use std::time::Duration;
 
 use thread::Pool;
 
+#[derive(Debug)]
 pub struct Config {
     pub limit: usize,
     pub port: u32,
     pub server: String,
 }
 
+impl Config {
+    pub fn from_env(args: Vec<String>) -> Result<Config, &'static str> {
+        if args.len() < 4 {
+            return Err("Not enough shell arguments!");
+        }
+        let limit: usize = match args[3].clone().parse() {
+            Ok(num) => num,
+            Err(_) => return Err("Failed to parse limit!"),
+        };
+        let port: u32 = match args[2].clone().parse() {
+            Ok(num) => num,
+            Err(_) => return Err("Failed to parse port!"),
+        };
+        let server = args[1].clone();
+        Ok(Config {
+            limit,
+            port,
+            server,
+        })
+    }
+}
+
 pub struct Application {
     pub config: Config,
 }
+
 impl Application {
     pub fn new(config: Config) {
         let path = format!("{}:{}", &config.server, &config.port);
