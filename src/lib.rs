@@ -1,9 +1,11 @@
 pub mod thread;
 
+use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::net::TcpListener;
 use std::net::TcpStream;
+use std::process;
 use std::time::Duration;
 
 use thread::Pool;
@@ -16,7 +18,8 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_env(args: Vec<String>) -> Result<Config, &'static str> {
+
+    pub fn from_env_args(args: Vec<String>) -> Result<Config, &'static str> {
         if args.len() < 4 {
             return Err("Not enough shell arguments!");
         }
@@ -35,6 +38,10 @@ impl Config {
             server,
         })
     }
+
+    pub fn from_env() -> Result<Config, &'static str> {
+        Config::from_env_args(env::args().collect())
+    }
 }
 
 #[cfg(test)]
@@ -42,9 +49,9 @@ mod config_test {
     use super::*;
 
     #[test]
-    fn from_env() {
+    fn from_env_args() {
         // This is expected to work
-        let response = Config::from_env(vec![
+        let response = Config::from_env_args(vec![
             String::from("ignore this"),
             String::from("127.0.0.1"),
             String::from("7878"),
@@ -53,7 +60,7 @@ mod config_test {
         assert!(response.is_ok());
 
         // Expected four arguments but received three
-        let response = Config::from_env(vec![
+        let response = Config::from_env_args(vec![
             String::from("127.0.0.1"),
             String::from("7878"),
             String::from("4"),
@@ -61,7 +68,7 @@ mod config_test {
         assert!(response.is_err());
 
         // Expected integer but got string
-        let response = Config::from_env(vec![
+        let response = Config::from_env_args(vec![
             String::from("ignore this"),
             String::from("127.0.0.1"),
             String::from("7878"),
@@ -76,8 +83,22 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn new(config: Config) {
-        let path = format!("{}:{}", &config.server, &config.port);
+    pub fn new(config: Result<Config, &'static str>, exit_on_error: bool) -> Result<_, &'static str> {
+
+        // Parse and validate config
+        let config = config.unwrap_or_else(|err| {
+            if exit_on_error {
+                eprintln!("Failed to parse environment arguments: {}", err);
+                process::exit(1);
+            }
+            return Err(format!("Failed to parse environment arguments: {}", config));
+        });
+        
+        let path = format!(
+            "{}:{}",
+            &config.server,
+            &config.port
+        );
         let listener = TcpListener::bind(&path);
 
         match listener {
@@ -101,9 +122,12 @@ impl Application {
                 println!("Failed to bind to server and port, error: {}", e);
             }
         }
+
+        Ok()
     }
 }
 
+// TODO Move this to a response dispatcher
 fn handle_connection(mut stream: TcpStream) {
     let mut buffer = [0; 512];
 
@@ -135,6 +159,8 @@ fn handle_connection(mut stream: TcpStream) {
 
     // TODO Handle this unwrap
     file.read_to_string(&mut response_body).unwrap();
+
+    // TODO Move this to a HTTP response module
 
     // TODO Make these more dynamic
     // Build HTTP response headers
