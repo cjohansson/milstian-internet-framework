@@ -13,6 +13,8 @@ This project is based on the programming exercise *Building a multithreaded web 
 
 ## Start application from shell
 
+**Rust source**
+
 ``` rust
 extern crate milstian;
 
@@ -22,6 +24,8 @@ fn main() {
     Application::new(Config::from_env()).expect("Failed to start application");
 }
 ```
+
+**Terminal command**
 
 ``` bash
 executable server port limit
