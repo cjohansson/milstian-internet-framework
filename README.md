@@ -10,19 +10,21 @@ This project is based on the programming exercise *Building a multithreaded web 
 * Scaleable
 
 ## Usage
-*Start application*
+
+## Start application from shell
 
 ``` rust
 extern crate milstian;
+
 use milstian::{Application, Config};
 
-...
+fn main() {
+    Application::new(Config::from_env()).expect("Failed to start application");
+}
+```
 
-Application::new(Config {
-        limit: 4,
-        port: 7878,
-        server: String::from("127.0.0.1"),
-    });
+``` bash
+executable server port limit
 ```
 
 ## License

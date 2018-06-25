@@ -83,16 +83,10 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn new(config: Result<Config, &'static str>, exit_on_error: bool) -> Result<_, &'static str> {
+    pub fn new(config: Result<Config, &'static str>) -> Result<bool, &'static str> {
 
         // Parse and validate config
-        let config = config.unwrap_or_else(|err| {
-            if exit_on_error {
-                eprintln!("Failed to parse environment arguments: {}", err);
-                process::exit(1);
-            }
-            return Err(format!("Failed to parse environment arguments: {}", config));
-        });
+        let config = config?;
         
         let path = format!(
             "{}:{}",
@@ -123,7 +117,7 @@ impl Application {
             }
         }
 
-        Ok()
+        Ok(true)
     }
 }
 
