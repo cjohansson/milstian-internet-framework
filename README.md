@@ -3,11 +3,12 @@
 In progress, primarily used for learning Rust programming. 
 This project is based on the programming exercise *Building a multithreaded web server* from the book *The Rust Programming Language* (*no starch press 2018*).
 
-## Milestones
-* Asynchronous web-server
-* Easy to configure
+## Goals
+* Concurrent web-server with integrated web framework
+* Easy to use
 * Fast
 * Scaleable
+* Flexible
 
 ## Usage
 
@@ -28,7 +29,7 @@ fn main() {
 **Terminal command**
 
 ``` bash
-executable server port limit
+$ milstian server port limit
 ```
 
 ## License

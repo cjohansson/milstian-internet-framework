@@ -8,6 +8,9 @@ pub struct Dispatcher {}
 
 impl Dispatcher {
 
+    // TODO Move logic to file-system response
+
+    /// This method takes a TcpStream and finds appropriate response handler
     pub fn dispatch_request(mut stream: TcpStream) {
         let mut buffer = [0; 512]; // TODO Understand this
 

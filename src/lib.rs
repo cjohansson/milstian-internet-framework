@@ -16,6 +16,8 @@ pub struct Config {
 
 impl Config {
 
+    /// This method takes a vector of strings and creates a config struct
+    /// based on index 1 (server), 2 (port) and 3 (limit)
     pub fn from_env_args(args: Vec<String>) -> Result<Config, &'static str> {
         if args.len() < 4 {
             return Err("Not enough shell arguments!");
@@ -36,6 +38,8 @@ impl Config {
         })
     }
 
+    /// This method collects arguments from environment
+    /// and passes them on to method from_env_args
     pub fn from_env() -> Result<Config, &'static str> {
         Config::from_env_args(env::args().collect())
     }
@@ -80,6 +84,9 @@ pub struct Application {
 }
 
 impl Application {
+
+    /// This method creates a new application based on configuration
+    // TODO return Application object
     pub fn new(config: Result<Config, &'static str>) -> Result<bool, &'static str> {
 
         // Parse and validate config
