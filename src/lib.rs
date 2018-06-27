@@ -1,5 +1,5 @@
-pub mod response;
-pub mod thread;
+mod response;
+mod thread;
 
 use std::env;
 use std::net::TcpListener;
@@ -86,8 +86,7 @@ pub struct Application {
 impl Application {
 
     /// This method creates a new application based on configuration
-    // TODO return Application object
-    pub fn new(config: Result<Config, &'static str>) -> Result<bool, &'static str> {
+    pub fn new(config: Result<Config, &'static str>) -> Result<Application, &'static str> {
 
         // Parse and validate config
         let config = config?;
@@ -121,6 +120,6 @@ impl Application {
             }
         }
 
-        Ok(true)
+        Ok(Application{ config })
     }
 }
