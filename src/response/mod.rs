@@ -9,7 +9,6 @@ use self::types::Filesystem;
 pub struct Dispatcher {}
 
 impl Dispatcher {
-
     /// This method takes a TcpStream and finds appropriate response handler
     pub fn dispatch_request(mut stream: TcpStream) {
         // Create a array with 512 elements containing the value 0
@@ -32,7 +31,6 @@ impl Dispatcher {
             println!("Found no response for request");
         }
     }
-
 }
 
 // This is the trait that all response types implement

@@ -1,6 +1,6 @@
+use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::mpsc;
 use std::thread;
 
 pub struct Pool {
@@ -9,9 +9,10 @@ pub struct Pool {
 }
 
 impl Pool {
-
     /// Create a job from a closure and send for execution
-    pub fn execute<F>(&self, f: F) where F: FnOnce() + Send + 'static
+    pub fn execute<F>(&self, f: F)
+    where
+        F: FnOnce() + Send + 'static,
     {
         // Place job inside a Box
         let job = Box::new(f);
@@ -22,7 +23,7 @@ impl Pool {
     }
 
     /// Create a new mutex channel with specified number of receivers
-    pub fn new (size: usize) -> Pool {
+    pub fn new(size: usize) -> Pool {
         assert!(size > 0);
 
         let (sender, receiver) = mpsc::channel();
@@ -32,16 +33,10 @@ impl Pool {
         let mut workers = Vec::with_capacity(size);
 
         for id in 0..size {
-            workers.push(Worker::new(
-                id,
-                Arc::clone(&receiver)
-            ));
+            workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
 
-        Pool {
-            workers,
-            sender
-        }
+        Pool { workers, sender }
     }
 }
 
@@ -65,7 +60,10 @@ impl Drop for Pool {
 
             if let Some(thread) = worker.thread.take() {
                 if let Err(error) = thread.join() {
-                    println!("Failed to join thread {:?}, error: {:?}", worker.thread, error);
+                    println!(
+                        "Failed to join thread {:?}, error: {:?}",
+                        worker.thread, error
+                    );
                 }
             } else {
                 println!("Failed to take ownership of thread {:?}", worker.thread);
@@ -91,7 +89,7 @@ impl Worker {
                         println!("Worker {} got a job; executing.", id);
 
                         job.call_box();
-                    },
+                    }
                     Message::Terminate => {
                         println!("Worker {} was told to terminate.", id);
 

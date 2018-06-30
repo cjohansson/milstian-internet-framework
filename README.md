@@ -36,5 +36,9 @@ fn main() {
 $ milstian server port limit
 ```
 
+## Development
+
+* Use rust-fmt
+
 ## License
 This project is under the **GPLv3** license

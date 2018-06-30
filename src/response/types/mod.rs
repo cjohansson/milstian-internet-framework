@@ -8,9 +8,7 @@ use response::Type;
 pub struct Filesystem {}
 
 impl Type for Filesystem {
-
     fn matches(request: &[u8]) -> bool {
-
         // TODO Should check if file exists here
 
         // TODO Do some logic here
@@ -18,7 +16,6 @@ impl Type for Filesystem {
     }
 
     fn respond(request: &[u8]) -> String {
-
         let get = b"GET / ";
         let sleep = b"GET /sleep ";
 
@@ -57,10 +54,6 @@ impl Type for Filesystem {
         response_headers.push_str("\r\n");
 
         // Build HTTP response
-        format!(
-            "{}{}",
-            response_headers,
-            response_body
-        )
+        format!("{}{}", response_headers, response_body)
     }
 }

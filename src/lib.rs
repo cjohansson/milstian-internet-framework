@@ -15,7 +15,6 @@ pub struct Config {
 }
 
 impl Config {
-
     /// This method takes a vector of strings and creates a config struct
     /// based on index 1 (server), 2 (port) and 3 (limit)
     pub fn from_env_args(args: Vec<String>) -> Result<Config, &'static str> {
@@ -84,18 +83,12 @@ pub struct Application {
 }
 
 impl Application {
-
     /// This method creates a new application based on configuration
     pub fn new(config: Result<Config, &'static str>) -> Result<Application, &'static str> {
-
         // Parse and validate config
         let config = config?;
-        
-        let path = format!(
-            "{}:{}",
-            &config.server,
-            &config.port
-        );
+
+        let path = format!("{}:{}", &config.server, &config.port);
         let listener = TcpListener::bind(&path);
 
         match listener {
@@ -120,6 +113,6 @@ impl Application {
             }
         }
 
-        Ok(Application{ config })
+        Ok(Application { config })
     }
 }
