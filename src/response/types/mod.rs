@@ -7,14 +7,24 @@ use response::Type;
 
 pub struct Filesystem {}
 
+// TODO: Must add settings to this
 impl Type for Filesystem {
     fn matches(request: &[u8]) -> bool {
+        let get = b"GET / ";
+        let sleep = b"GET /sleep ";
+
+        if request.starts_with(get) {
+            return true;
+        } else if request.starts_with(sleep) {
+            return true;
+        }
         // TODO Should check if file exists here
 
         // TODO Do some logic here
-        return true;
+        return false;
     }
 
+    // Make this respond headers as a HashMap and a string for body
     fn respond(request: &[u8]) -> String {
         let get = b"GET / ";
         let sleep = b"GET /sleep ";
@@ -55,5 +65,29 @@ impl Type for Filesystem {
 
         // Build HTTP response
         format!("{}{}", response_headers, response_body)
+    }
+}
+
+#[cfg(test)]
+mod filesystem_test {
+    use super::*;
+    #[test]
+    fn matches() {
+        assert!(Filesystem::matches(b"GET / "));
+        assert!(Filesystem::matches(b"GET /sleep "));
+        assert!(!Filesystem::matches(b"GET /test "));
+    }
+
+    #[test]
+    fn respond() {
+        let mut file = File::open("html/index.htm").unwrap();
+
+        // Build response body
+        let mut response_body = String::new();
+
+        // TODO Handle this unwrap
+        file.read_to_string(&mut response_body).unwrap();
+
+        assert_eq!(response_body, Filesystem::respond(b"GET / "));
     }
 }
