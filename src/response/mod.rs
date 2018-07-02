@@ -1,9 +1,10 @@
 mod types;
 
+use std::collections::HashMap;
 use std::io::prelude::*;
 use std::net::TcpStream;
 
-use self::types::Filesystem;
+use self::types::filesystem;
 
 // This struct should handle the dispatching of requests to a specific response type
 pub struct Dispatcher {}
@@ -18,8 +19,8 @@ impl Dispatcher {
 
         let mut response = String::from("");
 
-        if Filesystem::matches(&buffer) {
-            response = Filesystem::respond(&buffer);
+        if filesystem::Responder::matches(&buffer) {
+            response = filesystem::Responder::respond(&buffer);
         }
         // TODO Add more response types here
 
@@ -35,8 +36,7 @@ impl Dispatcher {
 
 // This is the trait that all response types implement
 trait Type {
+    fn new<T>(settings: HashMap) -> T;
     fn matches(request: &[u8]) -> bool;
     fn respond(request: &[u8]) -> String;
 }
-
-// TODO Create response types

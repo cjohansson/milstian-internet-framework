@@ -14,6 +14,8 @@ pub struct Config {
     pub server: String,
 }
 
+// TODO Remove command line argument parser and replace with a simple TOML parser
+
 impl Config {
     /// This method takes a vector of strings and creates a config struct
     /// based on index 1 (server), 2 (port) and 3 (limit)

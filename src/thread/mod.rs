@@ -79,21 +79,20 @@ pub struct Worker {
 
 impl Worker {
     fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
-        let thread = thread::spawn(move || {
-            loop {
-                // TODO Handle thes unwraps
-                let message = receiver.lock().unwrap().recv().unwrap();
+        let thread = thread::spawn(move || loop {
+            if let Ok(lock) = receiver.lock() {
+                if let Ok(message) = lock.recv() {
+                    match message {
+                        Message::NewJob(job) => {
+                            println!("Worker {} got a job; executing.", id);
 
-                match message {
-                    Message::NewJob(job) => {
-                        println!("Worker {} got a job; executing.", id);
+                            job.call_box();
+                        }
+                        Message::Terminate => {
+                            println!("Worker {} was told to terminate.", id);
 
-                        job.call_box();
-                    }
-                    Message::Terminate => {
-                        println!("Worker {} was told to terminate.", id);
-
-                        break;
+                            break;
+                        }
                     }
                 }
             }
