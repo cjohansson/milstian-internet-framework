@@ -1,5 +1,5 @@
 ((rust-mode . (
 
-       (before-save-hook . (lambda() (rust-format-buffer)))
+       (after-save-hook . (lambda() (rust-format-buffer)))
 
        )))
