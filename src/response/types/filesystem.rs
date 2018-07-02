@@ -15,16 +15,20 @@ pub struct Responder {
 }
 
 // TODO: Must add settings to this
-impl Type for Responder {
-    fn new(settings: HashMap) -> Responder {
-        Settings {}
+impl Type<Responder> for Responder {
+    fn new(settings: HashMap<String, String>) -> Responder {
+        Responder {
+            settings: Settings {
+                root: String::from(""),
+            },
+        }
     }
 
     fn matches(&self, request: &[u8]) -> bool {
         let get = b"GET / ";
         let sleep = b"GET /sleep ";
-
-        let path = format!("{}{}", self.settings.root, filename);
+        let filename = "index.html";
+        let path = format!("{}{}", &self.settings.root, filename);
 
         if request.starts_with(get) {
             return true;
@@ -87,13 +91,17 @@ mod filesystem_test {
     #[test]
     fn matches() {
         let settings = Settings { root: "./html/" };
-        assert!(Responder::matches(b"GET / ", settings));
-        assert!(Responder::matches(b"GET /sleep ", settings));
-        assert!(!Responder::matches(b"GET /test ", settings));
+        let responder = Responder::new(settings);
+        assert!(responder.matches(b"GET / "));
+        assert!(responder.matches(b"GET /sleep "));
+        assert!(!responder.matches(b"GET /test "));
     }
 
     #[test]
     fn respond() {
+        let settings = Settings { root: "./html/" };
+        let responder = Responder::new(settings);
+
         let mut file = File::open("html/index.htm").unwrap();
 
         // Build response body
@@ -102,6 +110,6 @@ mod filesystem_test {
         // TODO Handle this unwrap
         file.read_to_string(&mut response_body).unwrap();
 
-        assert_eq!(response_body, Responder::respond(b"GET / ", settings));
+        assert_eq!(response_body, responder.respond(b"GET / "));
     }
 }

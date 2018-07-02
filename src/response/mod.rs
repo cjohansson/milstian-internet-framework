@@ -19,8 +19,10 @@ impl Dispatcher {
 
         let mut response = String::from("");
 
-        if filesystem::Responder::matches(&buffer) {
-            response = filesystem::Responder::respond(&buffer);
+        let responder = filesystem::Responder::new(HashMap::new());
+
+        if responder.matches(&buffer) {
+            response = responder.respond(&buffer);
         }
         // TODO Add more response types here
 
@@ -35,8 +37,8 @@ impl Dispatcher {
 }
 
 // This is the trait that all response types implement
-trait Type {
-    fn new<T>(settings: HashMap) -> T;
-    fn matches(request: &[u8]) -> bool;
-    fn respond(request: &[u8]) -> String;
+trait Type<T> {
+    fn new(settings: HashMap<String, String>) -> T;
+    fn matches(&self, request: &[u8]) -> bool;
+    fn respond(&self, request: &[u8]) -> String;
 }
