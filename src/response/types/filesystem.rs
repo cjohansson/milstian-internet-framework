@@ -2,6 +2,7 @@ use std;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
+use std::path::Path;
 use std::time::Duration;
 
 use response::Type;
@@ -17,9 +18,10 @@ pub struct Responder {
 // TODO: Must add settings to this
 impl Type<Responder> for Responder {
     fn new(settings: HashMap<String, String>) -> Responder {
+        // TODO Convert HashMap to config structure here
         Responder {
             settings: Settings {
-                root: String::from(""),
+                root: "./html/".to_string(),
             },
         }
     }
@@ -29,16 +31,9 @@ impl Type<Responder> for Responder {
         let sleep = b"GET /sleep ";
         let filename = "index.html";
         let path = format!("{}{}", &self.settings.root, filename);
+        // TODO Make path dynamic
 
-        if request.starts_with(get) {
-            return true;
-        } else if request.starts_with(sleep) {
-            return true;
-        }
-        // TODO Should check if file exists here
-
-        // TODO Do some logic here
-        return false;
+        return Path::new(&path).exists();
     }
 
     // Make this respond headers as a HashMap and a string for body
@@ -90,7 +85,7 @@ mod filesystem_test {
     use super::*;
     #[test]
     fn matches() {
-        let settings = Settings { root: "./html/" };
+        let settings = HashMap::new();
         let responder = Responder::new(settings);
         assert!(responder.matches(b"GET / "));
         assert!(responder.matches(b"GET /sleep "));
@@ -99,7 +94,7 @@ mod filesystem_test {
 
     #[test]
     fn respond() {
-        let settings = Settings { root: "./html/" };
+        let settings = HashMap::new();
         let responder = Responder::new(settings);
 
         let mut file = File::open("html/index.htm").unwrap();
