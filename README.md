@@ -14,31 +14,9 @@ This project is based on the programming exercise *Building a multithreaded web 
 * Scaleable
 * Flexible
 
-## Usage
-
-## Start application from shell
-
-**Rust source**
-
-``` rust
-extern crate milstian;
-
-use milstian::{Application, Config};
-
-fn main() {
-    Application::new(Config::from_env()).expect("Failed to start application");
-}
-```
-
-**Terminal command**
-
-``` bash
-$ milstian server port limit
-```
-
 ## Development
 
-* Use rust-fmt
+* Use rust-fmt, an Emacs hook is included via DirectoryVariables.
 
 ## License
 This project is under the **GPLv3** license

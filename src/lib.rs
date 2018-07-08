@@ -1,8 +1,9 @@
-mod response;
-mod thread;
-
+use std::collections::HashMap;
 use std::env;
 use std::net::TcpListener;
+
+mod response;
+mod thread;
 
 use response::Dispatcher;
 use thread::Pool;
@@ -93,6 +94,11 @@ impl Application {
         let path = format!("{}:{}", &config.server, &config.port);
         let listener = TcpListener::bind(&path);
 
+        let settings = HashMap::new();
+
+        // TODO Use constants for settings values
+        settings.insert("filesystem_root".to_string(), "./html".to_string());
+
         match listener {
             Ok(listener) => {
                 let pool = Pool::new(config.limit);
@@ -101,7 +107,7 @@ impl Application {
                     match stream {
                         Ok(stream) => {
                             pool.execute(|| {
-                                Dispatcher::dispatch_request(stream);
+                                Dispatcher::dispatch_request(stream, &settings);
                             });
                         }
                         Err(e) => {

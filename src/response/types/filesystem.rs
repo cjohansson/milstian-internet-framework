@@ -7,32 +7,30 @@ use std::time::Duration;
 
 use response::Type;
 
-pub struct Settings {
-    pub root: String,
+pub struct Settings<'a> {
+    pub root: &'a String,
 }
 
-pub struct Responder {
-    settings: Settings,
+pub struct Responder<'a> {
+    settings: Settings<'a>,
 }
 
 // TODO: Must add settings to this
-impl Type<Responder> for Responder {
-    fn new(settings: HashMap<String, String>) -> Responder {
-        // TODO Convert HashMap to config structure here
+impl<'a> Type<'a, Responder<'a>> for Responder<'a> {
+    fn new(settings: &'a HashMap<String, String>) -> Responder<'a> {
+        let root = settings.get(&"filesystem_root".to_string()).unwrap();
         Responder {
-            settings: Settings {
-                root: "./html/".to_string(),
-            },
+            settings: Settings { root },
         }
     }
 
     fn matches(&self, request: &[u8]) -> bool {
         let get = b"GET / ";
         let sleep = b"GET /sleep ";
-        let filename = "index.html";
+        let filename = "index.htm";
         let path = format!("{}{}", &self.settings.root, filename);
         // TODO Make path dynamic
-
+        println!("Path: {}, exists {}", &path, Path::new(&path).exists());
         return Path::new(&path).exists();
     }
 
@@ -102,8 +100,13 @@ mod filesystem_test {
         // Build response body
         let mut response_body = String::new();
 
-        // TODO Handle this unwrap
         file.read_to_string(&mut response_body).unwrap();
+
+        // Add HTTP headers
+        response_body = format!(
+            "{}{}",
+            "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n", response_body
+        );
 
         assert_eq!(response_body, responder.respond(b"GET / "));
     }
