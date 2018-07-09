@@ -2,6 +2,7 @@ mod types;
 
 use std::io::prelude::*;
 use std::net::TcpStream;
+use std::str;
 
 use self::types::filesystem;
 use Config;
@@ -24,14 +25,17 @@ impl Dispatcher {
         if filesystem.matches(&buffer, &config) {
             response = filesystem.respond(&buffer, &config);
         }
-        // TODO Add more response types here
+        // TODO Add more response types here: page, ajax
 
         if !response.is_empty() {
             // Flush HTTP response
             stream.write(response.as_bytes()).unwrap();
             stream.flush().unwrap();
         } else {
-            println!("Found no response for request");
+            eprintln!(
+                "Found no response for request {:?}",
+                str::from_utf8(&buffer)
+            );
         }
     }
 }
