@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::env;
 use std::net::TcpListener;
 
@@ -8,11 +7,12 @@ mod thread;
 use response::Dispatcher;
 use thread::Pool;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Config {
-    pub limit: usize,
-    pub port: u32,
-    pub server: String,
+    pub filesystem_root: String,
+    pub server_limit: usize,
+    pub server_host: String,
+    pub server_port: u32,
 }
 
 // TODO Remove command line argument parser and replace with a simple TOML parser
@@ -21,22 +21,24 @@ impl Config {
     /// This method takes a vector of strings and creates a config struct
     /// based on index 1 (server), 2 (port) and 3 (limit)
     pub fn from_env_args(args: Vec<String>) -> Result<Config, &'static str> {
-        if args.len() < 4 {
+        if args.len() < 5 {
             return Err("Not enough shell arguments!");
         }
-        let limit: usize = match args[3].clone().parse() {
+        let server_limit: usize = match args[3].clone().parse() {
             Ok(num) => num,
             Err(_) => return Err("Failed to parse limit!"),
         };
-        let port: u32 = match args[2].clone().parse() {
+        let server_port: u32 = match args[2].clone().parse() {
             Ok(num) => num,
             Err(_) => return Err("Failed to parse port!"),
         };
-        let server = args[1].clone();
+        let server_host = args[1].clone();
+        let filesystem_root = args[4].clone();
         Ok(Config {
-            limit,
-            port,
-            server,
+            filesystem_root,
+            server_limit,
+            server_host,
+            server_port,
         })
     }
 
@@ -59,6 +61,7 @@ mod config_test {
             String::from("127.0.0.1"),
             String::from("7878"),
             String::from("4"),
+            String::from("./html/"),
         ]);
         assert!(response.is_ok());
 
@@ -76,38 +79,31 @@ mod config_test {
             String::from("127.0.0.1"),
             String::from("7878"),
             String::from("coffee"),
+            String::from("./html/"),
         ]);
         assert!(response.is_err());
     }
 }
 
-pub struct Application {
-    pub config: Config,
-}
+pub struct Application;
 
 impl Application {
     /// This method creates a new application based on configuration
     pub fn new(config: Result<Config, &'static str>) -> Result<Application, &'static str> {
-        // Parse and validate config
         let config = config?;
-
-        let path = format!("{}:{}", &config.server, &config.port);
+        let path = format!("{}:{}", &config.server_host, &config.server_port);
         let listener = TcpListener::bind(&path);
-
-        let settings = HashMap::new();
-
-        // TODO Use constants for settings values
-        settings.insert("filesystem_root".to_string(), "./html".to_string());
 
         match listener {
             Ok(listener) => {
-                let pool = Pool::new(config.limit);
+                let pool = Pool::new(config.server_limit);
 
                 for stream in listener.incoming() {
                     match stream {
                         Ok(stream) => {
-                            pool.execute(|| {
-                                Dispatcher::dispatch_request(stream, &settings);
+                            let cloned_config = config.clone();
+                            pool.execute(move || {
+                                Dispatcher::dispatch_request(stream, cloned_config);
                             });
                         }
                         Err(e) => {
@@ -121,6 +117,6 @@ impl Application {
             }
         }
 
-        Ok(Application { config })
+        Ok(Application)
     }
 }

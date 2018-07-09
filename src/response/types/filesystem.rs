@@ -1,41 +1,29 @@
 use std;
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use std::time::Duration;
 
 use response::Type;
+use Config;
 
-pub struct Settings<'a> {
-    pub root: &'a String,
-}
-
-pub struct Responder<'a> {
-    settings: Settings<'a>,
-}
+pub struct Responder;
 
 // TODO: Must add settings to this
-impl<'a> Type<'a, Responder<'a>> for Responder<'a> {
-    fn new(settings: &'a HashMap<String, String>) -> Responder<'a> {
-        let root = settings.get(&"filesystem_root".to_string()).unwrap();
-        Responder {
-            settings: Settings { root },
-        }
-    }
-
-    fn matches(&self, request: &[u8]) -> bool {
+impl Type<Responder> for Responder {
+    fn matches(&self, request: &[u8], config: &Config) -> bool {
         let get = b"GET / ";
         let sleep = b"GET /sleep ";
         let filename = "index.htm";
-        let path = format!("{}{}", &self.settings.root, filename);
+        let path = format!("{}{}", &config.filesystem_root, filename);
+
         // TODO Make path dynamic
         println!("Path: {}, exists {}", &path, Path::new(&path).exists());
         return Path::new(&path).exists();
     }
 
     // Make this respond headers as a HashMap and a string for body
-    fn respond(&self, request: &[u8]) -> String {
+    fn respond(&self, request: &[u8], config: &Config) -> String {
         let get = b"GET / ";
         let sleep = b"GET /sleep ";
 
