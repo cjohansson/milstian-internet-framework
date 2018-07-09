@@ -71,17 +71,27 @@ mod filesystem_test {
     use super::*;
     #[test]
     fn matches() {
-        let settings = HashMap::new();
-        let responder = Responder::new(settings);
-        assert!(responder.matches(b"GET / "));
-        assert!(responder.matches(b"GET /sleep "));
-        assert!(!responder.matches(b"GET /test "));
+        let config = Config {
+            filesystem_root: "./html/".to_string(),
+            server_host: "localhost".to_string(),
+            server_limit: 4,
+            server_port: 4040,
+        };
+        let responder = Responder {};
+        assert!(responder.matches(b"GET / ", &config));
+        assert!(responder.matches(b"GET /sleep ", &config));
+        assert!(!responder.matches(b"GET /test ", &config));
     }
 
     #[test]
     fn respond() {
-        let settings = HashMap::new();
-        let responder = Responder::new(settings);
+        let config = Config {
+            filesystem_root: "./html/".to_string(),
+            server_host: "localhost".to_string(),
+            server_limit: 4,
+            server_port: 4040,
+        };
+        let responder = Responder {};
 
         let mut file = File::open("html/index.htm").unwrap();
 
@@ -96,6 +106,6 @@ mod filesystem_test {
             "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n", response_body
         );
 
-        assert_eq!(response_body, responder.respond(b"GET / "));
+        assert_eq!(response_body, responder.respond(b"GET / ", &config));
     }
 }
