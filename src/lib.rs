@@ -9,6 +9,7 @@ use thread::Pool;
 
 #[derive(Clone, Debug)]
 pub struct Config {
+    pub filesystem_index: String,
     pub filesystem_root: String,
     pub server_limit: usize,
     pub server_host: String,
@@ -33,8 +34,10 @@ impl Config {
             Err(_) => return Err("Failed to parse port!"),
         };
         let server_host = args[1].clone();
-        let filesystem_root = args[4].clone();
+        let filesystem_index = args[4].clone();
+        let filesystem_root = args[5].clone();
         Ok(Config {
+            filesystem_index,
             filesystem_root,
             server_limit,
             server_host,
@@ -61,6 +64,7 @@ mod config_test {
             String::from("127.0.0.1"),
             String::from("7878"),
             String::from("4"),
+            String::from("index.htm"),
             String::from("./html/"),
         ]);
         assert!(response.is_ok());
@@ -79,6 +83,7 @@ mod config_test {
             String::from("127.0.0.1"),
             String::from("7878"),
             String::from("coffee"),
+            String::from("index.htm"),
             String::from("./html/"),
         ]);
         assert!(response.is_err());

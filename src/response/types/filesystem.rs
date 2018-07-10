@@ -72,6 +72,7 @@ mod filesystem_test {
     #[test]
     fn matches() {
         let config = Config {
+            filesystem_index: "index.htm".to_string(),
             filesystem_root: "./html/".to_string(),
             server_host: "localhost".to_string(),
             server_limit: 4,
@@ -79,13 +80,14 @@ mod filesystem_test {
         };
         let responder = Responder {};
         assert!(responder.matches(b"GET / ", &config));
-        assert!(responder.matches(b"GET /sleep ", &config));
-        assert!(!responder.matches(b"GET /test ", &config));
+        assert!(responder.matches(b"GET /index.htm", &config));
+        assert!(!responder.matches(b"GET /test.htm", &config));
     }
 
     #[test]
     fn respond() {
         let config = Config {
+            filesystem_index: "index.htm".to_string(),
             filesystem_root: "./html/".to_string(),
             server_host: "localhost".to_string(),
             server_limit: 4,
