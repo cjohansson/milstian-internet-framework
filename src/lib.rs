@@ -16,7 +16,9 @@ pub struct Config {
     pub server_port: u32,
 }
 
-// TODO Remove command line argument parser and replace with a simple TOML parser
+// TODO Add a TOML parser
+
+// TODO Add command line parser
 
 impl Config {
     /// This method takes a vector of strings and creates a config struct
@@ -106,9 +108,9 @@ impl Application {
                 for stream in listener.incoming() {
                     match stream {
                         Ok(stream) => {
-                            let cloned_config = config.clone();
-                            pool.execute(move || {
-                                Dispatcher::dispatch_request(stream, cloned_config);
+                            let config_copy = config.clone();
+                            pool.execute(|| {
+                                Dispatcher::dispatch_request(stream, config_copy);
                             });
                         }
                         Err(e) => {
