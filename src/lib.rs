@@ -2,6 +2,7 @@ use std::env;
 use std::net::TcpListener;
 
 mod response;
+mod request;
 mod thread;
 
 use response::Dispatcher;
