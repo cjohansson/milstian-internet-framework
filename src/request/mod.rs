@@ -49,7 +49,7 @@ impl HttpRequest {
     pub fn get_request_line(line: &str) -> Option<HttpRequestLine> {
         let line = line.trim();
         let mut request_method: HttpRequestMethod = HttpRequestMethod::Invalid;
-        let request_uri: String = "".to_string();
+        let mut request_uri: String = String::new();
         let mut request_protocol: HttpRequestProtocol = HttpRequestProtocol::Invalid;
         let mut error = false;
 
@@ -80,7 +80,8 @@ impl HttpRequest {
             }
 
             // Parse request URI
-            if let Some(request_uri) = parts.get(1) {
+            if let Some(request_uri_test) = parts.get(1) {
+                request_uri = request_uri_test.to_string();
                 println!("Found request uri: {}", &request_uri);
             } else {
                 error = true;
@@ -121,13 +122,24 @@ impl HttpRequest {
             println!("Request as string: {}", request);
             if request.is_ascii() {
                 println!("Request is ASCII");
+
+                let mut get_arguments: HashMap<String, String> = HashMap::new();
+                let mut headers: HashMap<String, String> = HashMap::new();
+                let mut post_arguments: HashMap<String, String> = HashMap::new();
+                let mut request_line: HttpRequestLine = HttpRequestLine {
+                    method: HttpRequestMethod::Invalid,
+                    protocol: HttpRequestProtocol::Invalid,
+                    request_uri: String::new()
+                };
                 let mut section = HttpRequestSection::RequestLine;
-                let mut error = false;
+                let mut error = true;
                 for mut line in request.lines() {
                     match section {
                         HttpRequestSection::RequestLine => {
-                            if let Some(request_line) = HttpRequest::get_request_line(line) {
+                            if let Some(request_line_test) = HttpRequest::get_request_line(line) {
+                                request_line = request_line_test;
                                 section = HttpRequestSection::HeaderFields;
+                                error = false;
                             } else {
                                 error = true;
                             }
@@ -140,7 +152,9 @@ impl HttpRequest {
                             }
                         },
                         HttpRequestSection::MessageBody => {
-                            if !line.is_empty() {
+                            if line.is_empty() {
+                                
+                            } else {
                                 // TODO: Do stuff here
                             }
                         }
@@ -148,6 +162,14 @@ impl HttpRequest {
                     if error {
                         break;
                     }
+                }
+                if !error {
+                    return Some(HttpRequest {
+                        get_arguments,
+                        headers,
+                        post_arguments,
+                        request_line
+                    });
                 }
             }
         }
@@ -187,6 +209,30 @@ mod request_test {
         assert!(response.is_none());
 
     }
+
+    #[test]
+    fn from_tcp_stream() {
+        let response = HttpRequest::from_tcp_stream(
+            b"GET / HTTP/2.0\r\n"
+        );
+        assert!(response.is_some());
+
+        let response = HttpRequest::from_tcp_stream(
+            b"POST / HTTP/2.0\r\nAgent: Random browser\r\n"
+        );
+        assert!(response.is_some());
+
+        let response = HttpRequest::from_tcp_stream(
+            b"RANDOM /stuff HTTP/2.5\r\n"
+        );
+        assert!(response.is_none());
+
+        let response = HttpRequest::from_tcp_stream(
+            b""
+        );
+        assert!(response.is_none());
+    }
+
 }
 
 
