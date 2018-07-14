@@ -59,12 +59,7 @@ impl HttpRequest {
 
     pub fn get_request_line(line: &str) -> Option<HttpRequestLine> {
         let line = line.trim();
-        let mut request_uri: String = String::new();
-        let mut request_protocol: HttpRequestProtocol = HttpRequestProtocol::Invalid;
-        let mut error = false;
-
         let parts: Vec<&str> = line.split(" ").collect();
-        println!("Collect request-line parts {:?}", &parts);
         if parts.len() == 3 {
 
             // Parse method
@@ -174,30 +169,86 @@ mod request_test {
     #[test]
     fn test_get_request_line() {
         let response = HttpRequest::get_request_line(
-            "GET / HTTP/0.9\r\n"
+            "POST /random HTTP/0.9\r\n"
         );
         assert!(response.is_some());
+
+        let response_unpacked = response.unwrap();
+        assert_eq!(
+            response_unpacked.method,
+            HttpRequestMethod::Post
+        );
+        assert_eq!(
+            response_unpacked.request_uri,
+            String::from("/random")
+        );
+        assert_eq!(
+            response_unpacked.protocol,
+            HttpRequestProtocol::ZeroDotNine
+        );
 
         let response = HttpRequest::get_request_line(
             "GET / HTTP/1.0\r\n"
         );
         assert!(response.is_some());
 
+        let response_unpacked = response.unwrap();
+        assert_eq!(
+            response_unpacked.method,
+            HttpRequestMethod::Get
+        );
+        assert_eq!(
+            response_unpacked.request_uri,
+            String::from("/")
+        );
+        assert_eq!(
+            response_unpacked.protocol,
+            HttpRequestProtocol::OneDotZero
+        );
+
         let response = HttpRequest::get_request_line(
-            "GET / HTTP/1.1\r\n"
+            "HEAD /moradish.html HTTP/1.1\r\n"
         );
         assert!(response.is_some());
 
+        let response_unpacked = response.unwrap();
+        assert_eq!(
+            response_unpacked.method,
+            HttpRequestMethod::Head
+        );
+        assert_eq!(
+            response_unpacked.request_uri,
+            String::from("/moradish.html")
+        );
+        assert_eq!(
+            response_unpacked.protocol,
+            HttpRequestProtocol::OneDotOne
+        );
+
+
         let response = HttpRequest::get_request_line(
-            "GET / HTTP/2.0\r\n"
+            "OPTIONS /random/random2.txt HTTP/2.0\r\n"
         );
         assert!(response.is_some());
+
+        let response_unpacked = response.unwrap();
+        assert_eq!(
+            response_unpacked.method,
+            HttpRequestMethod::Options
+        );
+        assert_eq!(
+            response_unpacked.request_uri,
+            String::from("/random/random2.txt")
+        );
+        assert_eq!(
+            response_unpacked.protocol,
+            HttpRequestProtocol::TwoDotZero
+        );
 
         let response = HttpRequest::get_request_line(
             "GET / HTTP/2.2\r\n"
         );
         assert!(response.is_none());
-
     }
 
     #[test]
