@@ -50,9 +50,11 @@ impl HttpRequest {
         let line = line.trim();
         let parts: Vec<&str> = line.splitn(2, ":").collect();
         if parts.len() == 2 {
+
             let header_key = parts.get(0)?.trim().to_string();
             let header_value = parts.get(1)?.trim().to_string();
             return Some((header_key, header_value));
+
         }
         None
     }
@@ -62,7 +64,6 @@ impl HttpRequest {
         let parts: Vec<&str> = line.split(" ").collect();
         if parts.len() == 3 {
 
-            // Parse method
             let request_method = match parts.get(0)?.as_ref() {
                 "CONNECT" => HttpRequestMethod::Connect,
                 "DELETE" => HttpRequestMethod::Delete,
@@ -76,10 +77,8 @@ impl HttpRequest {
                 __ => HttpRequestMethod::Invalid
             };
 
-            // Parse request URI
             let request_uri = parts.get(1)?.to_string();
 
-            // Parse protocol here
             let request_protocol = match parts.get(2)?.as_ref() {
                 "HTTP/0.9" => HttpRequestProtocol::ZeroDotNine,
                 "HTTP/1.0" => HttpRequestProtocol::OneDotZero,
