@@ -87,7 +87,7 @@ impl HttpRequestMessage {
 
             let request_uri = parts.get(1)?.to_string();
             let request_uri_copy = request_uri.clone();
-            let mut request_uri_base = String::new();
+            let mut request_uri_base = request_uri.clone();
             let mut query_string = String::new();
             let uri_parts: Vec<&str> = request_uri_copy.splitn(2, "?").collect();
             if uri_parts.len() == 2 {
@@ -220,7 +220,7 @@ mod request_test {
     #[test]
     fn test_get_request_line() {
         let response = HttpRequestMessage::get_request_line(
-            "POST /random HTTP/0.9\r\n"
+            "POST /random?abc=1 HTTP/0.9\r\n"
         );
         assert!(response.is_some());
 
@@ -231,7 +231,15 @@ mod request_test {
         );
         assert_eq!(
             response_unpacked.request_uri,
+            String::from("/random?abc=1")
+        );
+        assert_eq!(
+            response_unpacked.request_uri_base,
             String::from("/random")
+        );
+        assert_eq!(
+            response_unpacked.query_string,
+            String::from("abc=1")
         );
         assert_eq!(
             response_unpacked.protocol,
@@ -251,6 +259,14 @@ mod request_test {
         assert_eq!(
             response_unpacked.request_uri,
             String::from("/")
+        );
+        assert_eq!(
+            response_unpacked.request_uri_base,
+            String::from("/")
+        );
+        assert_eq!(
+            response_unpacked.query_string,
+            String::from("")
         );
         assert_eq!(
             response_unpacked.protocol,
