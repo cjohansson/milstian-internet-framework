@@ -104,10 +104,7 @@ impl HttpRequest {
     // TODO Implement this
     pub fn from_tcp_stream(request: &[u8]) -> Option<HttpRequest> {
         if let Ok(request) = str::from_utf8(request) {
-            println!("Request as string: {}", request);
             if request.is_ascii() {
-                println!("Request is ASCII");
-
                 let mut get_arguments: HashMap<String, String> = HashMap::new();
                 let mut headers: HashMap<String, String> = HashMap::new();
                 let mut post_arguments: HashMap<String, String> = HashMap::new();
@@ -117,38 +114,32 @@ impl HttpRequest {
                     request_uri: String::new()
                 };
                 let mut section = HttpRequestSection::RequestLine;
-                let mut error = true;
                 for mut line in request.lines() {
                     match section {
                         HttpRequestSection::RequestLine => {
-                            if let Some(request_line_test) = HttpRequest::get_request_line(line) {
-                                request_line = request_line_test;
-                                section = HttpRequestSection::HeaderFields;
-                                error = false;
-                            } else {
-                                error = true;
-                            }
+                            request_line = HttpRequest::get_request_line(line)?;
+                            section = HttpRequestSection::HeaderFields;
                         },
                         HttpRequestSection::HeaderFields => {
                             if line.trim().is_empty() {
                                 section = HttpRequestSection::MessageBody;
                             } else {
-                                // TODO: Do stuff here
+                                let (header_key, header_value) = HttpRequest::get_header_field(line)?;
+                                headers.insert(header_key, header_value);
                             }
                         },
                         HttpRequestSection::MessageBody => {
                             if line.is_empty() {
-                                
+                                break; // TODO Verify this
                             } else {
                                 // TODO: Do stuff here
                             }
                         }
                     }
-                    if error {
-                        break;
-                    }
                 }
-                if !error {
+                if request_line.method != HttpRequestMethod::Invalid
+                    && request_line.protocol != HttpRequestProtocol::Invalid
+                {
                     return Some(HttpRequest {
                         get_arguments,
                         headers,
@@ -165,6 +156,29 @@ impl HttpRequest {
 #[cfg(test)]
 mod request_test {
     use super::*;
+
+    #[test]
+    fn test_get_header_field() {
+        let response = HttpRequest::get_header_field(
+            "Agent: My Random Browser\r\n"
+        );
+        assert!(response.is_some());
+
+        let (key, value) = response.unwrap();
+        assert_eq!(
+            key,
+            "Agent".to_string()
+        );
+        assert_eq!(
+            value,
+            "My Random Browser".to_string()
+        );
+
+        let response = HttpRequest::get_header_field(
+            "Just various text here\r\n"
+        );
+        assert!(response.is_none());
+    }
 
     #[test]
     fn test_get_request_line() {
