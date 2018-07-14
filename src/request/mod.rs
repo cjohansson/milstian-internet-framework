@@ -46,6 +46,12 @@ enum HttpRequestSection {
 
 impl HttpRequestMessage {
 
+    // This associated function should parse body based on encoding
+    // TODO: Implement this
+    pub fn get_message_body(encoding: Option<String>, body: &str) -> Option<HashMap> {
+        None
+    }
+
     pub fn get_header_field(line: &str) -> Option<(String, String)> {
         let line = line.trim();
         let parts: Vec<&str> = line.splitn(2, ":").collect();
@@ -59,6 +65,7 @@ impl HttpRequestMessage {
         None
     }
 
+    // TODO This associated function should parse GET arguments as well
     pub fn get_request_line(line: &str) -> Option<HttpRequestLine> {
         let line = line.trim();
         let parts: Vec<&str> = line.split(" ").collect();
