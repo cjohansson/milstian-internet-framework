@@ -48,7 +48,7 @@ impl HttpRequest {
 
     pub fn get_header_field(line: &str) -> Option<(String, String)> {
         let line = line.trim();
-        let parts: Vec<&str> = line.split(":").collect();
+        let parts: Vec<&str> = line.splitn(2, ":").collect();
         if parts.len() == 2 {
             let header_key = parts.get(0)?.trim().to_string();
             let header_value = parts.get(1)?.trim().to_string();
@@ -160,33 +160,33 @@ mod request_test {
     #[test]
     fn test_get_header_field() {
         let response = HttpRequest::get_header_field(
-            "Agent: My Random Browser\r\n"
+            "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:12.0) Gecko/20100101 Firefox/12.0\r\n"
         );
         assert!(response.is_some());
 
         let (key, value) = response.unwrap();
         assert_eq!(
             key,
-            "Agent".to_string()
+            "User-Agent".to_string()
         );
         assert_eq!(
             value,
-            "My Random Browser".to_string()
+            "Mozilla/5.0 (X11; Linux x86_64; rv:12.0) Gecko/20100101 Firefox/12.0".to_string()
         );
 
         let response = HttpRequest::get_header_field(
-            "Another-Field : With a value \r\n"
+            "Cache-Control: no-cache \r\n"
         );
         assert!(response.is_some());
 
         let (key, value) = response.unwrap();
         assert_eq!(
             key,
-            "Another-Field".to_string()
+            "Cache-Control".to_string()
         );
         assert_eq!(
             value,
-            "With a value".to_string()
+            "no-cache".to_string()
         );
 
         let response = HttpRequest::get_header_field(
