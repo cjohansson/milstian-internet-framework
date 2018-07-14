@@ -2,9 +2,8 @@ use std::collections::HashMap;
 use std::str;
 
 pub struct HttpRequestMessage {
-    get_arguments: HashMap<String, String>,
+    body: HashMap<String, String>,
     headers: HashMap<String, String>,
-    post_arguments: HashMap<String, String>,
     request_line: HttpRequestLine
 }
 
@@ -12,7 +11,9 @@ pub struct HttpRequestMessage {
 pub struct HttpRequestLine {
     method: HttpRequestMethod,
     protocol: HttpRequestProtocol,
-    request_uri: String
+    request_uri: String,
+    request_uri_base: String,
+    query_string: String,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -48,7 +49,7 @@ impl HttpRequestMessage {
 
     // This associated function should parse body based on encoding
     // TODO: Implement this
-    pub fn get_message_body(encoding: Option<String>, body: &str) -> Option<HashMap> {
+    pub fn get_message_body(encoding: Option<String>, body: &str) -> Option<HashMap<String, String>> {
         None
     }
 
@@ -85,6 +86,14 @@ impl HttpRequestMessage {
             };
 
             let request_uri = parts.get(1)?.to_string();
+            let request_uri_copy = request_uri.clone();
+            let mut request_uri_base = String::new();
+            let mut query_string = String::new();
+            let uri_parts: Vec<&str> = request_uri_copy.splitn(2, "?").collect();
+            if uri_parts.len() == 2 {
+                request_uri_base = uri_parts.get(0)?.to_string();
+                query_string = uri_parts.get(1)?.to_string();
+            }
 
             let request_protocol = match parts.get(2)?.as_ref() {
                 "HTTP/0.9" => HttpRequestProtocol::ZeroDotNine,
@@ -100,7 +109,9 @@ impl HttpRequestMessage {
                 return Some(HttpRequestLine {
                     method: request_method,
                     protocol: request_protocol,
-                    request_uri: request_uri
+                    request_uri: request_uri,
+                    request_uri_base: request_uri_base,
+                    query_string: query_string
                 });
             }
         }
@@ -111,13 +122,14 @@ impl HttpRequestMessage {
     pub fn from_tcp_stream(request: &[u8]) -> Option<HttpRequestMessage> {
         if let Ok(request) = str::from_utf8(request) {
             if request.is_ascii() {
-                let mut get_arguments: HashMap<String, String> = HashMap::new();
                 let mut headers: HashMap<String, String> = HashMap::new();
-                let mut post_arguments: HashMap<String, String> = HashMap::new();
+                let mut body: HashMap<String, String> = HashMap::new();
                 let mut request_line: HttpRequestLine = HttpRequestLine {
                     method: HttpRequestMethod::Invalid,
                     protocol: HttpRequestProtocol::Invalid,
-                    request_uri: String::new()
+                    request_uri: String::new(),
+                    request_uri_base: String::new(),
+                    query_string: String::new()
                 };
                 let mut section = HttpRequestSection::RequestLine;
                 for mut line in request.lines() {
@@ -147,9 +159,8 @@ impl HttpRequestMessage {
                     && request_line.protocol != HttpRequestProtocol::Invalid
                 {
                     return Some(HttpRequestMessage {
-                        get_arguments,
+                        body,
                         headers,
-                        post_arguments,
                         request_line
                     });
                 }
