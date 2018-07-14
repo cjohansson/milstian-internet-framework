@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::str;
 
-pub struct HttpRequest {
+pub struct HttpRequestMessage {
     get_arguments: HashMap<String, String>,
     headers: HashMap<String, String>,
     post_arguments: HashMap<String, String>,
@@ -44,7 +44,7 @@ enum HttpRequestSection {
     MessageBody
 }
 
-impl HttpRequest {
+impl HttpRequestMessage {
 
     pub fn get_header_field(line: &str) -> Option<(String, String)> {
         let line = line.trim();
@@ -101,7 +101,7 @@ impl HttpRequest {
     }
 
     // TODO Implement this
-    pub fn from_tcp_stream(request: &[u8]) -> Option<HttpRequest> {
+    pub fn from_tcp_stream(request: &[u8]) -> Option<HttpRequestMessage> {
         if let Ok(request) = str::from_utf8(request) {
             if request.is_ascii() {
                 let mut get_arguments: HashMap<String, String> = HashMap::new();
@@ -116,14 +116,14 @@ impl HttpRequest {
                 for mut line in request.lines() {
                     match section {
                         HttpRequestSection::RequestLine => {
-                            request_line = HttpRequest::get_request_line(line)?;
+                            request_line = HttpRequestMessage::get_request_line(line)?;
                             section = HttpRequestSection::HeaderFields;
                         },
                         HttpRequestSection::HeaderFields => {
                             if line.trim().is_empty() {
                                 section = HttpRequestSection::MessageBody;
                             } else {
-                                let (header_key, header_value) = HttpRequest::get_header_field(line)?;
+                                let (header_key, header_value) = HttpRequestMessage::get_header_field(line)?;
                                 headers.insert(header_key, header_value);
                             }
                         },
@@ -139,7 +139,7 @@ impl HttpRequest {
                 if request_line.method != HttpRequestMethod::Invalid
                     && request_line.protocol != HttpRequestProtocol::Invalid
                 {
-                    return Some(HttpRequest {
+                    return Some(HttpRequestMessage {
                         get_arguments,
                         headers,
                         post_arguments,
@@ -158,7 +158,7 @@ mod request_test {
 
     #[test]
     fn test_get_header_field() {
-        let response = HttpRequest::get_header_field(
+        let response = HttpRequestMessage::get_header_field(
             "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:12.0) Gecko/20100101 Firefox/12.0\r\n"
         );
         assert!(response.is_some());
@@ -173,7 +173,7 @@ mod request_test {
             "Mozilla/5.0 (X11; Linux x86_64; rv:12.0) Gecko/20100101 Firefox/12.0".to_string()
         );
 
-        let response = HttpRequest::get_header_field(
+        let response = HttpRequestMessage::get_header_field(
             "Cache-Control: no-cache \r\n"
         );
         assert!(response.is_some());
@@ -188,12 +188,12 @@ mod request_test {
             "no-cache".to_string()
         );
 
-        let response = HttpRequest::get_header_field(
+        let response = HttpRequestMessage::get_header_field(
             "Just various text here\r\n"
         );
         assert!(response.is_none());
 
-        let response = HttpRequest::get_header_field(
+        let response = HttpRequestMessage::get_header_field(
             ""
         );
         assert!(response.is_none());
@@ -201,7 +201,7 @@ mod request_test {
 
     #[test]
     fn test_get_request_line() {
-        let response = HttpRequest::get_request_line(
+        let response = HttpRequestMessage::get_request_line(
             "POST /random HTTP/0.9\r\n"
         );
         assert!(response.is_some());
@@ -220,7 +220,7 @@ mod request_test {
             HttpRequestProtocol::ZeroDotNine
         );
 
-        let response = HttpRequest::get_request_line(
+        let response = HttpRequestMessage::get_request_line(
             "GET / HTTP/1.0\r\n"
         );
         assert!(response.is_some());
@@ -239,7 +239,7 @@ mod request_test {
             HttpRequestProtocol::OneDotZero
         );
 
-        let response = HttpRequest::get_request_line(
+        let response = HttpRequestMessage::get_request_line(
             "HEAD /moradish.html HTTP/1.1\r\n"
         );
         assert!(response.is_some());
@@ -259,7 +259,7 @@ mod request_test {
         );
 
 
-        let response = HttpRequest::get_request_line(
+        let response = HttpRequestMessage::get_request_line(
             "OPTIONS /random/random2.txt HTTP/2.0\r\n"
         );
         assert!(response.is_some());
@@ -278,7 +278,7 @@ mod request_test {
             HttpRequestProtocol::TwoDotZero
         );
 
-        let response = HttpRequest::get_request_line(
+        let response = HttpRequestMessage::get_request_line(
             "GET / HTTP/2.2\r\n"
         );
         assert!(response.is_none());
@@ -286,22 +286,22 @@ mod request_test {
 
     #[test]
     fn from_tcp_stream() {
-        let response = HttpRequest::from_tcp_stream(
+        let response = HttpRequestMessage::from_tcp_stream(
             b"GET / HTTP/2.0\r\n"
         );
         assert!(response.is_some());
 
-        let response = HttpRequest::from_tcp_stream(
+        let response = HttpRequestMessage::from_tcp_stream(
             b"POST / HTTP/2.0\r\nAgent: Random browser\r\n"
         );
         assert!(response.is_some());
 
-        let response = HttpRequest::from_tcp_stream(
+        let response = HttpRequestMessage::from_tcp_stream(
             b"RANDOM /stuff HTTP/2.5\r\n"
         );
         assert!(response.is_none());
 
-        let response = HttpRequest::from_tcp_stream(
+        let response = HttpRequestMessage::from_tcp_stream(
             b""
         );
         assert!(response.is_none());
