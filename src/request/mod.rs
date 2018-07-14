@@ -175,7 +175,27 @@ mod request_test {
         );
 
         let response = HttpRequest::get_header_field(
+            "Another-Field : With a value \r\n"
+        );
+        assert!(response.is_some());
+
+        let (key, value) = response.unwrap();
+        assert_eq!(
+            key,
+            "Another-Field".to_string()
+        );
+        assert_eq!(
+            value,
+            "With a value".to_string()
+        );
+
+        let response = HttpRequest::get_header_field(
             "Just various text here\r\n"
+        );
+        assert!(response.is_none());
+
+        let response = HttpRequest::get_header_field(
+            ""
         );
         assert!(response.is_none());
     }
