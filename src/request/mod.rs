@@ -15,7 +15,7 @@ pub struct HttpRequestLine {
     request_uri: String
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 enum HttpRequestMethod {
     Connect,
     Delete,
@@ -29,7 +29,7 @@ enum HttpRequestMethod {
     Trace
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 enum HttpRequestProtocol {
     Invalid,
     TwoDotZero,
@@ -46,66 +46,56 @@ enum HttpRequestSection {
 
 impl HttpRequest {
 
+    pub fn get_header_field(line: &str) -> Option<(String, String)> {
+        let line = line.trim();
+        let parts: Vec<&str> = line.split(":").collect();
+        if parts.len() == 2 {
+            let header_key = parts.get(0)?.trim().to_string();
+            let header_value = parts.get(1)?.trim().to_string();
+            return Some((header_key, header_value));
+        }
+        None
+    }
+
     pub fn get_request_line(line: &str) -> Option<HttpRequestLine> {
         let line = line.trim();
-        let mut request_method: HttpRequestMethod = HttpRequestMethod::Invalid;
         let mut request_uri: String = String::new();
         let mut request_protocol: HttpRequestProtocol = HttpRequestProtocol::Invalid;
         let mut error = false;
 
         let parts: Vec<&str> = line.split(" ").collect();
         println!("Collect request-line parts {:?}", &parts);
-        if parts.len() > 1 {
+        if parts.len() == 3 {
 
             // Parse method
-            if let Some(method_string) = parts.get(0) {
-                println!("method_string: {}", method_string);
-                request_method = match method_string.as_ref() {
-                    "CONNECT" => HttpRequestMethod::Connect,
-                    "DELETE" => HttpRequestMethod::Delete,
-                    "GET" => HttpRequestMethod::Get,
-                    "HEAD" => HttpRequestMethod::Head,
-                    "OPTIONS" => HttpRequestMethod::Options,
-                    "PATCH" => HttpRequestMethod::Patch,
-                    "PUT" => HttpRequestMethod::Put,
-                    "POST" => HttpRequestMethod::Post,
-                    "TRACE" => HttpRequestMethod::Trace,
-                    __ => {
-                        error = true;
-                        HttpRequestMethod::Invalid
-                    }
-                };
-            } else {
-                error = true;
-            }
+            let request_method = match parts.get(0)?.as_ref() {
+                "CONNECT" => HttpRequestMethod::Connect,
+                "DELETE" => HttpRequestMethod::Delete,
+                "GET" => HttpRequestMethod::Get,
+                "HEAD" => HttpRequestMethod::Head,
+                "OPTIONS" => HttpRequestMethod::Options,
+                "PATCH" => HttpRequestMethod::Patch,
+                "PUT" => HttpRequestMethod::Put,
+                "POST" => HttpRequestMethod::Post,
+                "TRACE" => HttpRequestMethod::Trace,
+                __ => HttpRequestMethod::Invalid
+            };
 
             // Parse request URI
-            if let Some(request_uri_test) = parts.get(1) {
-                request_uri = request_uri_test.to_string();
-                println!("Found request uri: {}", &request_uri);
-            } else {
-                error = true;
-            }
+            let request_uri = parts.get(1)?.to_string();
 
             // Parse protocol here
-            if let Some(request_protocol_string) = parts.get(2) {
-                request_protocol = match request_protocol_string.as_ref() {
-                    "HTTP/0.9" => HttpRequestProtocol::ZeroDotNine,
-                    "HTTP/1.0" => HttpRequestProtocol::OneDotZero,
-                    "HTTP/1.1" => HttpRequestProtocol::OneDotOne,
-                    "HTTP/2.0" => HttpRequestProtocol::TwoDotZero,
-                    _ => {
-                        error = true;
-                        HttpRequestProtocol::Invalid
-                    }
-                };
-                println!("Found protocol: {:?}", &request_protocol);
-            } else {
-                error = true;
-            }
+            let request_protocol = match parts.get(2)?.as_ref() {
+                "HTTP/0.9" => HttpRequestProtocol::ZeroDotNine,
+                "HTTP/1.0" => HttpRequestProtocol::OneDotZero,
+                "HTTP/1.1" => HttpRequestProtocol::OneDotOne,
+                "HTTP/2.0" => HttpRequestProtocol::TwoDotZero,
+                _ => HttpRequestProtocol::Invalid
+            };
 
-            if !error {
-                println!("No error, proceeding to header fields");
+            if request_method != HttpRequestMethod::Invalid
+                && request_protocol != HttpRequestProtocol::Invalid
+            {
                 return Some(HttpRequestLine {
                     method: request_method,
                     protocol: request_protocol,
