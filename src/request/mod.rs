@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::str;
 
+#[derive(Debug)]
 pub struct HttpRequestMessage {
     body: HashMap<String, String>,
     headers: HashMap<String, String>,
@@ -13,6 +14,7 @@ pub struct HttpRequestLine {
     protocol: HttpRequestProtocol,
     request_uri: String,
     request_uri_base: String,
+    query_arguments: HashMap<String, String>,
     query_string: String,
 }
 
@@ -57,22 +59,19 @@ impl HttpRequestMessage {
         let line = line.trim();
         let parts: Vec<&str> = line.splitn(2, ":").collect();
         if parts.len() == 2 {
-
             let header_key = parts.get(0)?.trim().to_string();
             let header_value = parts.get(1)?.trim().to_string();
             return Some((header_key, header_value));
-
         }
         None
     }
 
-    // TODO This associated function should parse GET arguments as well
     pub fn get_request_line(line: &str) -> Option<HttpRequestLine> {
         let line = line.trim();
         let parts: Vec<&str> = line.split(" ").collect();
         if parts.len() == 3 {
 
-            let request_method = match parts.get(0)?.as_ref() {
+            let method = match parts.get(0)?.as_ref() {
                 "CONNECT" => HttpRequestMethod::Connect,
                 "DELETE" => HttpRequestMethod::Delete,
                 "GET" => HttpRequestMethod::Get,
@@ -89,13 +88,30 @@ impl HttpRequestMessage {
             let request_uri_copy = request_uri.clone();
             let mut request_uri_base = request_uri.clone();
             let mut query_string = String::new();
+            let mut query_arguments: HashMap<String, String> = HashMap::new();
             let uri_parts: Vec<&str> = request_uri_copy.splitn(2, "?").collect();
             if uri_parts.len() == 2 {
                 request_uri_base = uri_parts.get(0)?.to_string();
                 query_string = uri_parts.get(1)?.to_string();
+
+                let query_args: Vec<&str> = query_string.split("&").collect();
+                for item in query_args {
+                    let query_arg: Vec<&str> = item.split("=").collect();
+                    if query_arg.len() == 2 {
+                        query_arguments.insert(
+                            query_arg.get(0)?.to_string(),
+                            query_arg.get(1)?.to_string()
+                        );
+                    } else {
+                        query_arguments.insert(
+                            query_arg.get(0)?.to_string(),
+                            String::from("1")
+                        );
+                    }
+                }
             }
 
-            let request_protocol = match parts.get(2)?.as_ref() {
+            let protocol = match parts.get(2)?.as_ref() {
                 "HTTP/0.9" => HttpRequestProtocol::ZeroDotNine,
                 "HTTP/1.0" => HttpRequestProtocol::OneDotZero,
                 "HTTP/1.1" => HttpRequestProtocol::OneDotOne,
@@ -103,15 +119,16 @@ impl HttpRequestMessage {
                 _ => HttpRequestProtocol::Invalid
             };
 
-            if request_method != HttpRequestMethod::Invalid
-                && request_protocol != HttpRequestProtocol::Invalid
+            if method != HttpRequestMethod::Invalid
+                && protocol != HttpRequestProtocol::Invalid
             {
                 return Some(HttpRequestLine {
-                    method: request_method,
-                    protocol: request_protocol,
-                    request_uri: request_uri,
-                    request_uri_base: request_uri_base,
-                    query_string: query_string
+                    method,
+                    protocol,
+                    request_uri,
+                    request_uri_base,
+                    query_arguments,
+                    query_string,
                 });
             }
         }
@@ -129,6 +146,7 @@ impl HttpRequestMessage {
                     protocol: HttpRequestProtocol::Invalid,
                     request_uri: String::new(),
                     request_uri_base: String::new(),
+                    query_arguments: HashMap::new(),
                     query_string: String::new()
                 };
                 let mut section = HttpRequestSection::RequestLine;
@@ -220,7 +238,7 @@ mod request_test {
     #[test]
     fn test_get_request_line() {
         let response = HttpRequestMessage::get_request_line(
-            "POST /random?abc=1 HTTP/0.9\r\n"
+            "POST /random?abc=test HTTP/0.9\r\n"
         );
         assert!(response.is_some());
 
@@ -231,7 +249,7 @@ mod request_test {
         );
         assert_eq!(
             response_unpacked.request_uri,
-            String::from("/random?abc=1")
+            String::from("/random?abc=test")
         );
         assert_eq!(
             response_unpacked.request_uri_base,
@@ -239,7 +257,11 @@ mod request_test {
         );
         assert_eq!(
             response_unpacked.query_string,
-            String::from("abc=1")
+            String::from("abc=test")
+        );
+        assert_eq!(
+            response_unpacked.query_arguments.get(&"abc".to_string()).unwrap().to_string(),
+            String::from("test")
         );
         assert_eq!(
             response_unpacked.protocol,
