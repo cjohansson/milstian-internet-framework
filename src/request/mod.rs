@@ -296,7 +296,7 @@ mod request_test {
         );
 
         let response = HttpRequestMessage::get_request_line(
-            "HEAD /moradish.html HTTP/1.1\r\n"
+            "HEAD /moradish.html?test&abc=def HTTP/1.1\r\n"
         );
         assert!(response.is_some());
 
@@ -307,7 +307,23 @@ mod request_test {
         );
         assert_eq!(
             response_unpacked.request_uri,
+            String::from("/moradish.html?test&abc=def")
+        );
+        assert_eq!(
+            response_unpacked.request_uri_base,
             String::from("/moradish.html")
+        );
+        assert_eq!(
+            response_unpacked.query_string,
+            String::from("test&abc=def")
+        );
+        assert_eq!(
+            response_unpacked.query_arguments.get(&"test".to_string()).unwrap().to_string(),
+            String::from("1")
+        );
+        assert_eq!(
+            response_unpacked.query_arguments.get(&"abc".to_string()).unwrap().to_string(),
+            String::from("def")
         );
         assert_eq!(
             response_unpacked.protocol,
