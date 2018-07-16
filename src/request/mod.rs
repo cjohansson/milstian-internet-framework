@@ -49,9 +49,27 @@ enum HttpRequestSection {
 
 impl HttpRequestMessage {
 
-    // This associated function should parse body based on encoding
-    // TODO: Implement this
-    pub fn get_message_body(encoding: Option<String>, body: &str) -> Option<HashMap<String, String>> {
+    // TODO This associated function should parse body based on encoding
+    pub fn get_message_body(body: &str) -> Option<HashMap<String, String>> {
+        let body_arguments: Vec<&str> = body.split("&").collect();
+        let mut args: HashMap<String, String> = HashMap::new();
+        for item in body_arguments {
+            let query_arg: Vec<&str> = item.split("=").collect();
+            if query_arg.len() == 2 {
+                args.insert(
+                    query_arg.get(0)?.to_string(),
+                    query_arg.get(1)?.to_string()
+                );
+            } else {
+                args.insert(
+                    query_arg.get(0)?.to_string(),
+                    String::from("1")
+                );
+            }
+        }
+        if args.len() > 0 {
+            return Some(args);
+        }
         None
     }
 
@@ -191,6 +209,32 @@ impl HttpRequestMessage {
 #[cfg(test)]
 mod request_test {
     use super::*;
+
+    #[test]
+    fn test_get_message_body() {
+        let response = HttpRequestMessage::get_message_body(
+            "random=abc&hej=def&def"
+        );
+        assert!(response.is_some());
+
+        let response_unwrapped = response.unwrap();
+        assert_eq!(
+            response_unwrapped.get(&"random".to_string()).unwrap().to_string(),
+            "abc".to_string()
+        );
+        assert_eq!(
+            response_unwrapped.get(&"hej".to_string()).unwrap().to_string(),
+            "def".to_string()
+        );
+        assert_eq!(
+            response_unwrapped.get(&"def".to_string()).unwrap().to_string(),
+            "1".to_string()
+        );
+        assert_ne!(
+            response_unwrapped.get(&"defs".to_string()).unwrap().to_string(),
+            "1".to_string()
+        );
+    }
 
     #[test]
     fn test_get_header_field() {
