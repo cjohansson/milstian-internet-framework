@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 use std::str;
 
+// TODO Should only parse body for supported request methods
+// TODO Should support parsing of different message body encodings
+
 #[derive(Debug)]
 pub struct HttpRequestMessage {
     body: HashMap<String, String>,
