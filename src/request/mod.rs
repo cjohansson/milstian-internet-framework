@@ -145,7 +145,6 @@ impl HttpRequestMessage {
         None
     }
 
-    // TODO Implement this
     pub fn from_tcp_stream(request: &[u8]) -> Option<HttpRequestMessage> {
         if let Ok(request) = str::from_utf8(request) {
             if request.is_ascii() {
@@ -177,9 +176,11 @@ impl HttpRequestMessage {
                         }
                         HttpRequestSection::MessageBody => {
                             if line.is_empty() {
-                                break; // TODO Verify this
+                                break;
                             } else {
-                                // TODO: Do stuff here
+                                if let Some(body_args) = HttpRequestMessage::get_message_body(line) {
+                                    body = body_args;
+                                }
                             }
                         }
                     }
@@ -350,10 +351,40 @@ mod request_test {
     fn from_tcp_stream() {
         let response = HttpRequestMessage::from_tcp_stream(b"GET / HTTP/2.0\r\n");
         assert!(response.is_some());
+        let response_unwrapped = response.unwrap();
+        assert_eq!(
+            response_unwrapped.request_line.method,
+            HttpRequestMethod::Get
+        );
+        assert_eq!(
+            response_unwrapped.request_line.request_uri,
+            "/".to_string()
+        );
+        assert_eq!(
+            response_unwrapped.request_line.protocol,
+            HttpRequestProtocol::TwoDotZero
+        );
 
         let response =
-            HttpRequestMessage::from_tcp_stream(b"POST / HTTP/2.0\r\nAgent: Random browser\r\n");
+            HttpRequestMessage::from_tcp_stream(b"POST / HTTP/1.0\r\nAgent: Random browser\r\n\r\ntest=abc");
         assert!(response.is_some());
+        let response_unwrapped = response.unwrap();
+        assert_eq!(
+            response_unwrapped.request_line.method,
+            HttpRequestMethod::Post
+        );
+        assert_eq!(
+            response_unwrapped.request_line.protocol,
+            HttpRequestProtocol::OneDotZero
+        );
+        assert_eq!(
+            response_unwrapped.headers.get(&"Agent".to_string()).unwrap().to_string(),
+            "Random browser".to_string()
+        );
+        assert_eq!(
+            response_unwrapped.body.get(&"test".to_string()).unwrap().to_string(),
+            "abc".to_string()
+        );
 
         let response = HttpRequestMessage::from_tcp_stream(b"RANDOM /stuff HTTP/2.5\r\n");
         assert!(response.is_none());
