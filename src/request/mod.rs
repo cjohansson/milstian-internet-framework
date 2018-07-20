@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use std::str;
 
-// TODO Should only parse body for supported request methods
 // TODO Should support parsing of different message body encodings
+// TODO Support multi-part message bodies and gzip
+// TODO Support TLS?
 
 #[derive(Debug)]
 pub struct HttpRequestMessage {
@@ -50,7 +51,89 @@ enum HttpRequestSection {
     MessageBody,
 }
 
+#[derive(Debug, Eq, PartialEq)]
+enum HttpSettingValence {
+    Optional,
+    No,
+    Yes,
+}
+
 impl HttpRequestMessage {
+    fn method_has_request_body(method: &HttpRequestMethod) -> HttpSettingValence {
+        match method {
+            HttpRequestMethod::Connect => HttpSettingValence::Yes,
+            HttpRequestMethod::Delete => HttpSettingValence::No,
+            HttpRequestMethod::Get => HttpSettingValence::Optional,
+            HttpRequestMethod::Head => HttpSettingValence::No,
+            HttpRequestMethod::Options => HttpSettingValence::Optional,
+            HttpRequestMethod::Patch => HttpSettingValence::Yes,
+            HttpRequestMethod::Post => HttpSettingValence::Yes,
+            HttpRequestMethod::Put => HttpSettingValence::Yes,
+            HttpRequestMethod::Trace => HttpSettingValence::Yes,
+            HttpRequestMethod::Invalid => HttpSettingValence::Optional,
+        }
+    }
+
+    fn _method_has_response_body(method: &HttpRequestMethod) -> bool {
+        match method {
+            HttpRequestMethod::Connect => true,
+            HttpRequestMethod::Delete => true,
+            HttpRequestMethod::Get => true,
+            HttpRequestMethod::Head => false,
+            HttpRequestMethod::Options => true,
+            HttpRequestMethod::Patch => true,
+            HttpRequestMethod::Post => true,
+            HttpRequestMethod::Put => true,
+            HttpRequestMethod::Trace => true,
+            HttpRequestMethod::Invalid => true,
+        }
+    }
+
+    fn _method_is_safe(method: &HttpRequestMethod) -> bool {
+        match method {
+            HttpRequestMethod::Connect => false,
+            HttpRequestMethod::Delete => false,
+            HttpRequestMethod::Get => true,
+            HttpRequestMethod::Head => true,
+            HttpRequestMethod::Options => true,
+            HttpRequestMethod::Patch => false,
+            HttpRequestMethod::Post => false,
+            HttpRequestMethod::Put => false,
+            HttpRequestMethod::Trace => true,
+            HttpRequestMethod::Invalid => true,
+        }
+    }
+
+    fn _method_is_idempotent(method: &HttpRequestMethod) -> bool {
+        match method {
+            HttpRequestMethod::Connect => false,
+            HttpRequestMethod::Delete => true,
+            HttpRequestMethod::Get => true,
+            HttpRequestMethod::Head => true,
+            HttpRequestMethod::Options => true,
+            HttpRequestMethod::Patch => false,
+            HttpRequestMethod::Post => false,
+            HttpRequestMethod::Put => true,
+            HttpRequestMethod::Trace => true,
+            HttpRequestMethod::Invalid => true,
+        }
+    }
+
+    fn _method_is_cacheable(method: &HttpRequestMethod) -> bool {
+        match method {
+            HttpRequestMethod::Connect => false,
+            HttpRequestMethod::Delete => false,
+            HttpRequestMethod::Get => true,
+            HttpRequestMethod::Head => true,
+            HttpRequestMethod::Options => false,
+            HttpRequestMethod::Patch => false,
+            HttpRequestMethod::Post => true,
+            HttpRequestMethod::Put => false,
+            HttpRequestMethod::Trace => false,
+            HttpRequestMethod::Invalid => false,
+        }
+    }
+
     // TODO This associated function should parse body based on encoding
     pub fn get_message_body(body: &str) -> Option<HashMap<String, String>> {
         let mut args: HashMap<String, String> = HashMap::new();
@@ -177,8 +260,12 @@ impl HttpRequestMessage {
                         HttpRequestSection::MessageBody => {
                             if line.is_empty() {
                                 break;
-                            } else {
-                                if let Some(body_args) = HttpRequestMessage::get_message_body(line) {
+                            } else if HttpRequestMessage::method_has_request_body(
+                                &request_line.method,
+                            ) != HttpSettingValence::No
+                            {
+                                if let Some(body_args) = HttpRequestMessage::get_message_body(line)
+                                {
                                     body = body_args;
                                 }
                             }
@@ -349,6 +436,7 @@ mod request_test {
 
     #[test]
     fn from_tcp_stream() {
+        // GET request with no headers or body
         let response = HttpRequestMessage::from_tcp_stream(b"GET / HTTP/2.0\r\n");
         assert!(response.is_some());
         let response_unwrapped = response.unwrap();
@@ -356,17 +444,16 @@ mod request_test {
             response_unwrapped.request_line.method,
             HttpRequestMethod::Get
         );
-        assert_eq!(
-            response_unwrapped.request_line.request_uri,
-            "/".to_string()
-        );
+        assert_eq!(response_unwrapped.request_line.request_uri, "/".to_string());
         assert_eq!(
             response_unwrapped.request_line.protocol,
             HttpRequestProtocol::TwoDotZero
         );
 
-        let response =
-            HttpRequestMessage::from_tcp_stream(b"POST / HTTP/1.0\r\nAgent: Random browser\r\n\r\ntest=abc");
+        // POST request with random header
+        let response = HttpRequestMessage::from_tcp_stream(
+            b"POST / HTTP/1.0\r\nAgent: Random browser\r\n\r\ntest=abc",
+        );
         assert!(response.is_some());
         let response_unwrapped = response.unwrap();
         assert_eq!(
@@ -378,19 +465,46 @@ mod request_test {
             HttpRequestProtocol::OneDotZero
         );
         assert_eq!(
-            response_unwrapped.headers.get(&"Agent".to_string()).unwrap().to_string(),
+            response_unwrapped
+                .headers
+                .get(&"Agent".to_string())
+                .unwrap()
+                .to_string(),
             "Random browser".to_string()
         );
         assert_eq!(
-            response_unwrapped.body.get(&"test".to_string()).unwrap().to_string(),
+            response_unwrapped
+                .body
+                .get(&"test".to_string())
+                .unwrap()
+                .to_string(),
             "abc".to_string()
         );
 
+        // Two invalid HTTP requests
         let response = HttpRequestMessage::from_tcp_stream(b"RANDOM /stuff HTTP/2.5\r\n");
         assert!(response.is_none());
-
         let response = HttpRequestMessage::from_tcp_stream(b"");
         assert!(response.is_none());
+
+        // Get requests should get their message body parsed
+        let response = HttpRequestMessage::from_tcp_stream(b"GET / HTTP/2.0\r\n\r\nabc=123");
+        assert!(response.is_some());
+        let response_unwrapped = response.unwrap();
+        assert_eq!(
+            response_unwrapped
+                .body
+                .get(&"abc".to_string())
+                .unwrap()
+                .to_string(),
+            "123".to_string()
+        );
+
+        // HEAD requests should not get their message body parsed
+        let response = HttpRequestMessage::from_tcp_stream(b"HEAD / HTTP/2.0\r\n\r\nabc=123");
+        assert!(response.is_some());
+        let response_unwrapped = response.unwrap();
+        assert!(response_unwrapped.body.get(&"abc".to_string()).is_none());
     }
 
 }
