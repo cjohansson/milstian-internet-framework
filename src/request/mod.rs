@@ -3,6 +3,7 @@ use std::str;
 
 // TODO Should support parsing of different message body encodings
 // TODO Support multi-part message bodies and gzip
+// TODO Support keep-alive
 // TODO Support TLS?
 
 #[derive(Debug)]
@@ -39,9 +40,9 @@ enum HttpRequestMethod {
 #[derive(Debug, Eq, PartialEq)]
 enum HttpRequestProtocol {
     Invalid,
-    TwoDotZero,
     OneDotZero,
     OneDotOne,
+    TwoDotZero,
     ZeroDotNine,
 }
 
@@ -193,7 +194,6 @@ impl HttpRequestMessage {
             if uri_parts.len() == 2 {
                 request_uri_base = uri_parts.get(0)?.to_string();
                 query_string = uri_parts.get(1)?.to_string();
-
                 let query_args: Vec<&str> = query_string.split("&").collect();
                 for item in query_args {
                     let query_arg: Vec<&str> = item.split("=").collect();
@@ -224,6 +224,41 @@ impl HttpRequestMessage {
                     query_string,
                 });
             }
+        } else if parts.len() == 1 {
+
+            // Add support a request line containing only the path name is accepted by servers to maintain compatibility with HTTP clients before the HTTP/1.0 specification
+            let method = HttpRequestMethod::Get;
+            let request_uri = parts.get(0)?.to_string();
+            let protocol = HttpRequestProtocol::ZeroDotNine;
+
+            let request_uri_copy = request_uri.clone();
+            let mut request_uri_base = request_uri.clone();
+            let mut query_string = String::new();
+            let mut query_arguments: HashMap<String, String> = HashMap::new();
+            let uri_parts: Vec<&str> = request_uri_copy.splitn(2, "?").collect();
+            if uri_parts.len() == 2 {
+                request_uri_base = uri_parts.get(0)?.to_string();
+                query_string = uri_parts.get(1)?.to_string();
+                let query_args: Vec<&str> = query_string.split("&").collect();
+                for item in query_args {
+                    let query_arg: Vec<&str> = item.split("=").collect();
+                    if query_arg.len() == 2 {
+                        query_arguments
+                            .insert(query_arg.get(0)?.to_string(), query_arg.get(1)?.to_string());
+                    } else {
+                        query_arguments.insert(query_arg.get(0)?.to_string(), String::from("1"));
+                    }
+                }
+            }
+
+            return Some(HttpRequestLine {
+                method,
+                protocol,
+                request_uri,
+                request_uri_base,
+                query_arguments,
+                query_string,
+            });
         }
         None
     }
@@ -438,7 +473,7 @@ mod request_test {
     fn from_tcp_stream() {
         // GET request with no headers or body
         let response = HttpRequestMessage::from_tcp_stream(b"GET / HTTP/2.0\r\n");
-        assert!(response.is_some());
+        assert!(response.is_some());        
         let response_unwrapped = response.unwrap();
         assert_eq!(
             response_unwrapped.request_line.method,
@@ -505,6 +540,22 @@ mod request_test {
         assert!(response.is_some());
         let response_unwrapped = response.unwrap();
         assert!(response_unwrapped.body.get(&"abc".to_string()).is_none());
+
+        let response = HttpRequestMessage::from_tcp_stream(b"html/index.html\r\n");
+        assert!(response.is_some());
+        let response_unwrapped = response.unwrap();
+        assert_eq!(
+            response_unwrapped.request_line.method,
+            HttpRequestMethod::Get
+        );
+        assert_eq!(
+            response_unwrapped.request_line.request_uri,
+            "html/index.html".to_string()
+        );
+        assert_eq!(
+            response_unwrapped.request_line.protocol,
+            HttpRequestProtocol::ZeroDotNine
+        );
     }
 
 }

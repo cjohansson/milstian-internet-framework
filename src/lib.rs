@@ -18,7 +18,6 @@ pub struct Config {
 }
 
 // TODO Add a TOML parser
-
 // TODO Add command line parser
 
 impl Config {
