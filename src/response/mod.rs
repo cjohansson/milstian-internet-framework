@@ -16,11 +16,11 @@ impl Dispatcher {
         // Create a array with 512 elements containing the value 0
         let mut buffer = [0; 512];
 
+        // TODO Handle this unwrap
         stream.read(&mut buffer).unwrap();
 
         let mut response = String::from("");
-
-        let filesystem = filesystem::Responder {};
+        let mut filesystem = filesystem::Responder::new();
 
         if filesystem.matches(&buffer, &config) {
             response = filesystem.respond(&buffer, &config);
@@ -42,6 +42,6 @@ impl Dispatcher {
 
 // This is the trait that all response types implement
 trait Type<T> {
-    fn matches(&self, request: &[u8], config: &Config) -> bool;
+    fn matches(&mut self, request: &[u8], config: &Config) -> bool;
     fn respond(&self, request: &[u8], config: &Config) -> String;
 }

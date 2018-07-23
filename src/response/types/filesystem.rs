@@ -8,23 +8,33 @@ use request::http;
 use response::Type;
 use Config;
 
-pub struct Responder;
+pub struct Responder {
+    pub request_message: Option<http::RequestMessage>
+}
 
-// TODO: Must add dynamic settings to this
+impl Responder {
+    pub fn new() -> Responder {
+        Responder { request_message: None }
+    }
+}
+
 impl Type<Responder> for Responder {
-    fn matches(&self, request: &[u8], config: &Config) -> bool {
+    fn matches(&mut self, request: &[u8], config: &Config) -> bool {
         if let Some(request_message) = http::RequestMessage::from_tcp_stream(request) {
-            let filename = request_message.request_line.request_uri_base;
-            let path = format!("{}{}", &config.filesystem_root, filename);
-            // TODO Make path dynamic
-            println!("Path: {}, exists {}", &path, Path::new(&path).exists());
-            return Path::new(&path).exists();
+            let filename = request_message.request_line.request_uri_base.clone();
+            self.request_message = Some(request_message);
+            let filename = format!(
+                "{}{}",
+                &config.filesystem_root,
+                &filename
+            );
+            return Path::new(&filename).exists();
         }
         false
     }
 
     // Make this respond headers as a HashMap and a string for body
-    fn respond(&self, request: &[u8], config: &Config) -> String {
+    fn respond(&self, request: &[u8], _config: &Config) -> String {
         let get = b"GET / ";
         let sleep = b"GET /sleep ";
 
@@ -79,7 +89,7 @@ mod filesystem_test {
             server_limit: 4,
             server_port: 4040,
         };
-        let responder = Responder {};
+        let mut responder = Responder::new();
         assert!(responder.matches(b"GET /index.htm HTTP/1.0", &config));
         assert!(!responder.matches(b"GET /test.htm HTTP/1.1", &config));
     }
@@ -93,7 +103,7 @@ mod filesystem_test {
             server_limit: 4,
             server_port: 4040,
         };
-        let responder = Responder {};
+        let mut responder = Responder::new();
 
         let mut file = File::open("html/index.htm").unwrap();
 
