@@ -135,12 +135,11 @@ impl HttpRequestMessage {
         }
     }
 
-    // TODO This associated function should parse body based on encoding
-    pub fn get_message_body(body: &str) -> Option<HashMap<String, String>> {
+    fn get_query_args_from_string(subject: &str) -> Option<HashMap<String, String>> {
         let mut args: HashMap<String, String> = HashMap::new();
-        if !body.is_empty() {
-            let body_arguments: Vec<&str> = body.split("&").collect();
-            for item in body_arguments {
+        if !subject.is_empty() {
+            let subject_arguments: Vec<&str> = subject.split("&").collect();
+            for item in subject_arguments {
                 let query_arg: Vec<&str> = item.split("=").collect();
                 if query_arg.len() == 2 {
                     args.insert(query_arg.get(0)?.to_string(), query_arg.get(1)?.to_string());
@@ -153,6 +152,11 @@ impl HttpRequestMessage {
             return Some(args);
         }
         None
+    }
+
+    // TODO This associated function should parse body based on encoding
+    pub fn get_message_body(body: &str) -> Option<HashMap<String, String>> {
+        HttpRequestMessage::get_query_args_from_string(body)
     }
 
     pub fn get_header_field(line: &str) -> Option<(String, String)> {
@@ -194,15 +198,8 @@ impl HttpRequestMessage {
             if uri_parts.len() == 2 {
                 request_uri_base = uri_parts.get(0)?.to_string();
                 query_string = uri_parts.get(1)?.to_string();
-                let query_args: Vec<&str> = query_string.split("&").collect();
-                for item in query_args {
-                    let query_arg: Vec<&str> = item.split("=").collect();
-                    if query_arg.len() == 2 {
-                        query_arguments
-                            .insert(query_arg.get(0)?.to_string(), query_arg.get(1)?.to_string());
-                    } else {
-                        query_arguments.insert(query_arg.get(0)?.to_string(), String::from("1"));
-                    }
+                if let Some(query_args) = HttpRequestMessage::get_query_args_from_string(&query_string) {
+                    query_arguments = query_args;
                 }
             }
 
@@ -235,19 +232,13 @@ impl HttpRequestMessage {
             let mut request_uri_base = request_uri.clone();
             let mut query_string = String::new();
             let mut query_arguments: HashMap<String, String> = HashMap::new();
+            
             let uri_parts: Vec<&str> = request_uri_copy.splitn(2, "?").collect();
             if uri_parts.len() == 2 {
                 request_uri_base = uri_parts.get(0)?.to_string();
                 query_string = uri_parts.get(1)?.to_string();
-                let query_args: Vec<&str> = query_string.split("&").collect();
-                for item in query_args {
-                    let query_arg: Vec<&str> = item.split("=").collect();
-                    if query_arg.len() == 2 {
-                        query_arguments
-                            .insert(query_arg.get(0)?.to_string(), query_arg.get(1)?.to_string());
-                    } else {
-                        query_arguments.insert(query_arg.get(0)?.to_string(), String::from("1"));
-                    }
+                if let Some(query_args) = HttpRequestMessage::get_query_args_from_string(&query_string) {
+                    query_arguments = query_args;
                 }
             }
 
