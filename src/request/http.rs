@@ -8,23 +8,23 @@ use std::str;
 
 #[derive(Debug)]
 pub struct RequestMessage {
-    body: HashMap<String, String>,
-    headers: HashMap<String, String>,
-    request_line: RequestLine,
+    pub body: HashMap<String, String>,
+    pub headers: HashMap<String, String>,
+    pub request_line: RequestLine,
 }
 
 #[derive(Debug)]
 pub struct RequestLine {
-    method: RequestMethod,
-    protocol: RequestProtocol,
-    request_uri: String,
-    request_uri_base: String,
-    query_arguments: HashMap<String, String>,
-    query_string: String,
+    pub method: RequestMethod,
+    pub protocol: RequestProtocol,
+    pub request_uri: String,
+    pub request_uri_base: String,
+    pub query_arguments: HashMap<String, String>,
+    pub query_string: String,
 }
 
 #[derive(Debug, Eq, PartialEq)]
-enum RequestMethod {
+pub enum RequestMethod {
     Connect,
     Delete,
     Get,
@@ -38,7 +38,7 @@ enum RequestMethod {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-enum RequestProtocol {
+pub enum RequestProtocol {
     Invalid,
     OneDotZero,
     OneDotOne,
@@ -198,16 +198,17 @@ impl RequestMessage {
             if uri_parts.len() == 2 {
                 request_uri_base = uri_parts.get(0)?.to_string();
                 query_string = uri_parts.get(1)?.to_string();
-                if let Some(query_args) = RequestMessage::get_query_args_from_string(&query_string) {
+                if let Some(query_args) = RequestMessage::get_query_args_from_string(&query_string)
+                {
                     query_arguments = query_args;
                 }
             }
 
             let protocol = match parts.get(2)?.as_ref() {
-                "/0.9" => RequestProtocol::ZeroDotNine,
-                "/1.0" => RequestProtocol::OneDotZero,
-                "/1.1" => RequestProtocol::OneDotOne,
-                "/2.0" => RequestProtocol::TwoDotZero,
+                "HTTP/0.9" => RequestProtocol::ZeroDotNine,
+                "HTTP/1.0" => RequestProtocol::OneDotZero,
+                "HTTP/1.1" => RequestProtocol::OneDotOne,
+                "HTTP/2.0" => RequestProtocol::TwoDotZero,
                 _ => RequestProtocol::Invalid,
             };
 
@@ -222,8 +223,7 @@ impl RequestMessage {
                 });
             }
         } else if parts.len() == 1 {
-
-            // Add support a request line containing only the path name is accepted by servers to maintain compatibility with  clients before the /1.0 specification
+            // Add support a request line containing only the path name is accepted by servers to maintain compatibility with  clients before the HTTP/1.0 specification
             let method = RequestMethod::Get;
             let request_uri = parts.get(0)?.to_string();
             let protocol = RequestProtocol::ZeroDotNine;
@@ -232,12 +232,13 @@ impl RequestMessage {
             let mut request_uri_base = request_uri.clone();
             let mut query_string = String::new();
             let mut query_arguments: HashMap<String, String> = HashMap::new();
-            
+
             let uri_parts: Vec<&str> = request_uri_copy.splitn(2, "?").collect();
             if uri_parts.len() == 2 {
                 request_uri_base = uri_parts.get(0)?.to_string();
                 query_string = uri_parts.get(1)?.to_string();
-                if let Some(query_args) = RequestMessage::get_query_args_from_string(&query_string) {
+                if let Some(query_args) = RequestMessage::get_query_args_from_string(&query_string)
+                {
                     query_arguments = query_args;
                 }
             }
@@ -286,12 +287,10 @@ impl RequestMessage {
                         RequestSection::MessageBody => {
                             if line.is_empty() {
                                 break;
-                            } else if RequestMessage::method_has_request_body(
-                                &request_line.method,
-                            ) != SettingValence::No
+                            } else if RequestMessage::method_has_request_body(&request_line.method)
+                                != SettingValence::No
                             {
-                                if let Some(body_args) = RequestMessage::get_message_body(line)
-                                {
+                                if let Some(body_args) = RequestMessage::get_message_body(line) {
                                     body = body_args;
                                 }
                             }
@@ -380,7 +379,7 @@ mod request_test {
 
     #[test]
     fn test_get_request_line() {
-        let response = RequestMessage::get_request_line("POST /random?abc=test /0.9\r\n");
+        let response = RequestMessage::get_request_line("POST /random?abc=test HTTP/0.9\r\n");
         assert!(response.is_some());
 
         let response_unpacked = response.unwrap();
@@ -401,7 +400,7 @@ mod request_test {
         );
         assert_eq!(response_unpacked.protocol, RequestProtocol::ZeroDotNine);
 
-        let response = RequestMessage::get_request_line("GET / /1.0\r\n");
+        let response = RequestMessage::get_request_line("GET / HTTP/1.0\r\n");
         assert!(response.is_some());
 
         let response_unpacked = response.unwrap();
@@ -412,7 +411,7 @@ mod request_test {
         assert_eq!(response_unpacked.protocol, RequestProtocol::OneDotZero);
 
         let response =
-            RequestMessage::get_request_line("HEAD /moradish.html?test&abc=def /1.1\r\n");
+            RequestMessage::get_request_line("HEAD /moradish.html?test&abc=def HTTP/1.1\r\n");
         assert!(response.is_some());
 
         let response_unpacked = response.unwrap();
@@ -444,8 +443,7 @@ mod request_test {
         );
         assert_eq!(response_unpacked.protocol, RequestProtocol::OneDotOne);
 
-        let response =
-            RequestMessage::get_request_line("OPTIONS /random/random2.txt /2.0\r\n");
+        let response = RequestMessage::get_request_line("OPTIONS /random/random2.txt HTTP/2.0\r\n");
         assert!(response.is_some());
 
         let response_unpacked = response.unwrap();
@@ -456,20 +454,17 @@ mod request_test {
         );
         assert_eq!(response_unpacked.protocol, RequestProtocol::TwoDotZero);
 
-        let response = RequestMessage::get_request_line("GET / /2.2\r\n");
+        let response = RequestMessage::get_request_line("GET / HTTP/2.2\r\n");
         assert!(response.is_none());
     }
 
     #[test]
     fn from_tcp_stream() {
         // GET request with no headers or body
-        let response = RequestMessage::from_tcp_stream(b"GET / /2.0\r\n");
-        assert!(response.is_some());        
+        let response = RequestMessage::from_tcp_stream(b"GET / HTTP/2.0\r\n");
+        assert!(response.is_some());
         let response_unwrapped = response.unwrap();
-        assert_eq!(
-            response_unwrapped.request_line.method,
-            RequestMethod::Get
-        );
+        assert_eq!(response_unwrapped.request_line.method, RequestMethod::Get);
         assert_eq!(response_unwrapped.request_line.request_uri, "/".to_string());
         assert_eq!(
             response_unwrapped.request_line.protocol,
@@ -478,14 +473,11 @@ mod request_test {
 
         // POST request with random header
         let response = RequestMessage::from_tcp_stream(
-            b"POST / /1.0\r\nAgent: Random browser\r\n\r\ntest=abc",
+            b"POST / HTTP/1.0\r\nAgent: Random browser\r\n\r\ntest=abc",
         );
         assert!(response.is_some());
         let response_unwrapped = response.unwrap();
-        assert_eq!(
-            response_unwrapped.request_line.method,
-            RequestMethod::Post
-        );
+        assert_eq!(response_unwrapped.request_line.method, RequestMethod::Post);
         assert_eq!(
             response_unwrapped.request_line.protocol,
             RequestProtocol::OneDotZero
@@ -508,13 +500,13 @@ mod request_test {
         );
 
         // Two invalid  requests
-        let response = RequestMessage::from_tcp_stream(b"RANDOM /stuff /2.5\r\n");
+        let response = RequestMessage::from_tcp_stream(b"RANDOM /stuff HTTP/2.5\r\n");
         assert!(response.is_none());
         let response = RequestMessage::from_tcp_stream(b"");
         assert!(response.is_none());
 
         // Get requests should get their message body parsed
-        let response = RequestMessage::from_tcp_stream(b"GET / /2.0\r\n\r\nabc=123");
+        let response = RequestMessage::from_tcp_stream(b"GET / HTTP/2.0\r\n\r\nabc=123");
         assert!(response.is_some());
         let response_unwrapped = response.unwrap();
         assert_eq!(
@@ -527,7 +519,7 @@ mod request_test {
         );
 
         // HEAD requests should not get their message body parsed
-        let response = RequestMessage::from_tcp_stream(b"HEAD / /2.0\r\n\r\nabc=123");
+        let response = RequestMessage::from_tcp_stream(b"HEAD / HTTP/2.0\r\n\r\nabc=123");
         assert!(response.is_some());
         let response_unwrapped = response.unwrap();
         assert!(response_unwrapped.body.get(&"abc".to_string()).is_none());
@@ -535,10 +527,7 @@ mod request_test {
         let response = RequestMessage::from_tcp_stream(b"html/index.html\r\n");
         assert!(response.is_some());
         let response_unwrapped = response.unwrap();
-        assert_eq!(
-            response_unwrapped.request_line.method,
-            RequestMethod::Get
-        );
+        assert_eq!(response_unwrapped.request_line.method, RequestMethod::Get);
         assert_eq!(
             response_unwrapped.request_line.request_uri,
             "html/index.html".to_string()

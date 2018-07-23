@@ -4,22 +4,23 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::time::Duration;
 
+use request::http;
 use response::Type;
 use Config;
 
 pub struct Responder;
 
-// TODO: Must add settings to this
+// TODO: Must add dynamic settings to this
 impl Type<Responder> for Responder {
     fn matches(&self, request: &[u8], config: &Config) -> bool {
-        let get = b"GET / ";
-        let sleep = b"GET /sleep ";
-        let filename = "index.htm";
-        let path = format!("{}{}", &config.filesystem_root, filename);
-
-        // TODO Make path dynamic
-        println!("Path: {}, exists {}", &path, Path::new(&path).exists());
-        return Path::new(&path).exists();
+        if let Some(request_message) = http::RequestMessage::from_tcp_stream(request) {
+            let filename = request_message.request_line.request_uri_base;
+            let path = format!("{}{}", &config.filesystem_root, filename);
+            // TODO Make path dynamic
+            println!("Path: {}, exists {}", &path, Path::new(&path).exists());
+            return Path::new(&path).exists();
+        }
+        false
     }
 
     // Make this respond headers as a HashMap and a string for body
@@ -79,9 +80,8 @@ mod filesystem_test {
             server_port: 4040,
         };
         let responder = Responder {};
-        assert!(responder.matches(b"GET / ", &config));
-        assert!(responder.matches(b"GET /index.htm", &config));
-        assert!(!responder.matches(b"GET /test.htm", &config));
+        assert!(responder.matches(b"GET /index.htm HTTP/1.0", &config));
+        assert!(!responder.matches(b"GET /test.htm HTTP/1.1", &config));
     }
 
     #[test]
