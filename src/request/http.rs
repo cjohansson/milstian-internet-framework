@@ -154,6 +154,16 @@ impl RequestMessage {
         None
     }
 
+    pub fn get_protocol_text(protocol: &RequestProtocol) -> String {
+        match protocol {
+            RequestProtocol::ZeroDotNine => String::from("HTTP/0.9"),
+            RequestProtocol::OneDotZero => String::from("HTTP/1.0"),
+            RequestProtocol::OneDotOne => String::from("HTTP/1.1"),
+            RequestProtocol::TwoDotZero => String::from("HTTP/2.0"),
+            RequestProtocol::Invalid => String::from("INVALID")
+        }
+    }
+
     // TODO This associated function should parse body based on encoding
     pub fn get_message_body(body: &str) -> Option<HashMap<String, String>> {
         RequestMessage::get_query_args_from_string(body)

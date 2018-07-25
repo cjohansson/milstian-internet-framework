@@ -9,12 +9,16 @@ use response::Type;
 use Config;
 
 pub struct Responder {
-    pub request_message: Option<http::RequestMessage>
+    pub filename: Option<String>,
+    pub request_message: Option<http::RequestMessage>,
 }
 
 impl Responder {
     pub fn new() -> Responder {
-        Responder { request_message: None }
+        Responder {
+            filename: None,
+            request_message: None,
+        }
     }
 }
 
@@ -22,55 +26,61 @@ impl Type<Responder> for Responder {
     fn matches(&mut self, request: &[u8], config: &Config) -> bool {
         if let Some(request_message) = http::RequestMessage::from_tcp_stream(request) {
             let filename = request_message.request_line.request_uri_base.clone();
+            let filename = format!("{}{}", &config.filesystem_root, &filename);
+            let exists = Path::new(&filename).exists();
             self.request_message = Some(request_message);
-            let filename = format!(
-                "{}{}",
-                &config.filesystem_root,
-                &filename
-            );
-            return Path::new(&filename).exists();
+            self.filename = Some(filename);
+            return exists;
         }
         false
     }
 
     // Make this respond headers as a HashMap and a string for body
-    fn respond(&self, request: &[u8], _config: &Config) -> String {
-        let get = b"GET / ";
-        let sleep = b"GET /sleep ";
-
-        // TODO Make these more dynamic
-        let (status_line, filename) = if request.starts_with(get) {
-            ("200 OK", "index.htm")
-        } else if request.starts_with(sleep) {
-            std::thread::sleep(Duration::from_secs(10));
-            ("200 OK", "index.htm")
-        } else {
-            ("404 NOT FOUND", "404.htm")
-        };
-
-        // Read file
-        let filename = format!("html/{}", filename);
-
-        // TODO Handle this unwrap
-        // TODO Make the path more dynamic
-        let mut file = File::open(filename).unwrap();
-
-        // Build response body
+    fn respond(&self, _request: &[u8], _config: &Config) -> String {
         let mut response_body = String::new();
-
-        // TODO Handle this unwrap
-        file.read_to_string(&mut response_body).unwrap();
-
-        // TODO Move this to a HTTP response module
-
-        // TODO Make these more dynamic
-        // Build HTTP response headers
         let mut response_headers = String::new();
-        response_headers.push_str(&format!("HTTP/1.1 {}\r\n", status_line));
-        response_headers.push_str("Content-Type: text/html\r\n");
 
-        // TODO Add more headers here
-        response_headers.push_str("\r\n");
+        // Does filename exist?
+        if let Some(filename) = &self.filename {
+
+            // Try to open the file
+            let file = File::open(filename);
+            match file {
+                Ok(mut file) =>{
+
+                    // Try to read the file
+                    match file.read_to_string(&mut response_body) {
+                        Ok(_) => {
+
+                            // TODO Make this dynamic
+                            let status_code = "200 OK";
+
+                            // let procotol = self.request_message.unwrap().request_line.protocol
+                            let protocol = http::RequestMessage::get_protocol_text(&self.request_message.as_ref().unwrap().request_line.protocol);
+
+                            // TODO Make these more dynamic
+                            // Build HTTP response headers
+                            response_headers.push_str(&format!("{} {}\r\n", protocol, status_code));
+                            response_headers.push_str("Content-Type: text/html\r\n");
+
+                            // TODO Add more headers here
+                            response_headers.push_str("\r\n");
+                        },
+                        Err(e) => {
+                            // TODO Do something here
+                            eprintln!("Error: Failed to read file {:?}", e);
+                        }
+                    }
+                },
+                Err(e) => {
+                    // TODO Do something here
+                    eprintln!("Error: Failed to open file {:?}", e);
+                }
+            }
+        } else {
+            // TODO Do something here
+            eprintln!("Error: Filename missing");
+        }
 
         // Build HTTP response
         format!("{}{}", response_headers, response_body)
@@ -112,12 +122,18 @@ mod filesystem_test {
 
         file.read_to_string(&mut response_body).unwrap();
 
+        let request = b"GET / HTTP/1.1";
+
+        responder.matches(request, &config);
+
         // Add HTTP headers
         response_body = format!(
             "{}{}",
             "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n", response_body
         );
 
-        assert_eq!(response_body, responder.respond(b"GET / ", &config));
+        let response = responder.respond(request, &config);
+
+        assert_eq!(response_body, response);
     }
 }
