@@ -25,12 +25,28 @@ impl Responder {
 impl Type<Responder> for Responder {
     fn matches(&mut self, request: &[u8], config: &Config) -> bool {
         if let Some(request_message) = http::RequestMessage::from_tcp_stream(request) {
-            let filename = request_message.request_line.request_uri_base.clone();
-            let filename = format!("{}{}", &config.filesystem_root, &filename);
-            let exists = Path::new(&filename).exists();
+            let mut filename = request_message.request_line.request_uri_base.clone();
+            if filename.starts_with("/") {
+                filename.remove(0);
+                println!("New filename is: {}", &filename);
+            }
+            println!("Filename is: {}", &filename);
+            let mut filename = format!("{}{}", &config.filesystem_root, &filename);
+            let mut exists = Path::new(&filename).exists();
+            let mut is_dir = false;
+            if exists {
+                is_dir = Path::new(&filename).is_dir();
+                if is_dir {
+                    filename = format!("{}{}", &filename, &config.filesystem_index);
+                    println!("Composite filename: {}", &filename);
+                    exists = Path::new(&filename).exists();
+                    is_dir = Path::new(&filename).is_dir()
+                }
+            }
+            println!("Final filename: {}", &filename);
             self.request_message = Some(request_message);
             self.filename = Some(filename);
-            return exists;
+            return exists && !is_dir;
         }
         false
     }
@@ -70,12 +86,12 @@ impl Type<Responder> for Responder {
                             return Ok(format!("{}{}", response_headers, response_body));
                         },
                         Err(e) => {
-                            return Err(format!("Error: Failed to read file {:?}", e));
+                            return Err(format!("Error: Failed to read file {}, error: {:?}", filename, e));
                         }
                     }
                 },
                 Err(e) => {
-                    return Err(format!("Error: Failed to open file {:?}", e));
+                    return Err(format!("Error: Failed to open file {}, error: {:?}", filename, e));
                 }
             }
         } else {
@@ -97,6 +113,7 @@ mod filesystem_test {
             server_port: 4040,
         };
         let mut responder = Responder::new();
+        assert!(responder.matches(b"GET / HTTP/1.0", &config));
         assert!(responder.matches(b"GET /index.htm HTTP/1.0", &config));
         assert!(!responder.matches(b"GET /test.htm HTTP/1.1", &config));
     }
@@ -119,9 +136,11 @@ mod filesystem_test {
 
         file.read_to_string(&mut response_body).unwrap();
 
-        let request = b"GET /index.htm HTTP/1.1";
+        let request = b"GET / HTTP/1.1";
 
-        responder.matches(request, &config);
+        let matches = responder.matches(request, &config);
+
+        assert!(matches);
 
         // Add HTTP headers
         response_body = format!(
