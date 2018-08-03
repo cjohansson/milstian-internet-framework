@@ -28,9 +28,7 @@ impl Type<Responder> for Responder {
             let mut filename = request_message.request_line.request_uri_base.clone();
             if filename.starts_with("/") {
                 filename.remove(0);
-                println!("New filename is: {}", &filename);
             }
-            println!("Filename is: {}", &filename);
             let mut filename = format!("{}{}", &config.filesystem_root, &filename);
             let mut exists = Path::new(&filename).exists();
             let mut is_dir = false;
@@ -38,12 +36,10 @@ impl Type<Responder> for Responder {
                 is_dir = Path::new(&filename).is_dir();
                 if is_dir {
                     filename = format!("{}{}", &filename, &config.filesystem_index);
-                    println!("Composite filename: {}", &filename);
                     exists = Path::new(&filename).exists();
                     is_dir = Path::new(&filename).is_dir()
                 }
             }
-            println!("Final filename: {}", &filename);
             self.request_message = Some(request_message);
             self.filename = Some(filename);
             return exists && !is_dir;
