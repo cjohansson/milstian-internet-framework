@@ -23,7 +23,8 @@ impl Dispatcher {
         let mut filesystem = filesystem::Responder::new();
 
         if filesystem.matches(&buffer, &config) {
-            response = filesystem.respond(&buffer, &config);
+            // TODO Handle this unwrap
+            response = filesystem.respond(&buffer, &config).unwrap();
         }
         // TODO Add more response types here: page, ajax
 
@@ -43,5 +44,5 @@ impl Dispatcher {
 // This is the trait that all response types implement
 trait Type<T> {
     fn matches(&mut self, request: &[u8], config: &Config) -> bool;
-    fn respond(&self, request: &[u8], config: &Config) -> String;
+    fn respond(&self, request: &[u8], config: &Config) -> Result<String, String>;
 }

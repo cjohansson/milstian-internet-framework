@@ -4,7 +4,7 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::time::Duration;
 
-use request::http;
+use transport_protocol::http;
 use response::Type;
 use Config;
 
@@ -36,7 +36,7 @@ impl Type<Responder> for Responder {
     }
 
     // Make this respond headers as a HashMap and a string for body
-    fn respond(&self, _request: &[u8], _config: &Config) -> String {
+    fn respond(&self, _request: &[u8], _config: &Config) -> Result<String, String> {
         let mut response_body = String::new();
         let mut response_headers = String::new();
 
@@ -65,25 +65,22 @@ impl Type<Responder> for Responder {
 
                             // TODO Add more headers here
                             response_headers.push_str("\r\n");
+
+                            // Build HTTP response
+                            return Ok(format!("{}{}", response_headers, response_body));
                         },
                         Err(e) => {
-                            // TODO Do something here
-                            eprintln!("Error: Failed to read file {:?}", e);
+                            return Err(format!("Error: Failed to read file {:?}", e));
                         }
                     }
                 },
                 Err(e) => {
-                    // TODO Do something here
-                    eprintln!("Error: Failed to open file {:?}", e);
+                    return Err(format!("Error: Failed to open file {:?}", e));
                 }
             }
         } else {
-            // TODO Do something here
-            eprintln!("Error: Filename missing");
+            return Err("Error: Filename missing".to_string());
         }
-
-        // Build HTTP response
-        format!("{}{}", response_headers, response_body)
     }
 }
 
@@ -122,7 +119,7 @@ mod filesystem_test {
 
         file.read_to_string(&mut response_body).unwrap();
 
-        let request = b"GET / HTTP/1.1";
+        let request = b"GET /index.htm HTTP/1.1";
 
         responder.matches(request, &config);
 
@@ -132,8 +129,7 @@ mod filesystem_test {
             "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n", response_body
         );
 
-        let response = responder.respond(request, &config);
-
+        let response = responder.respond(request, &config).unwrap();
         assert_eq!(response_body, response);
     }
 }
