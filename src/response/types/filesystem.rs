@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use std::time::Duration;
+use std::collections::HashMap;
 
 use transport_protocol::http;
 use response::Type;
@@ -137,13 +138,18 @@ mod filesystem_test {
         let matches = responder.matches(request, &config);
         assert!(matches);
 
-        // Add HTTP headers
-        response_body = format!(
-            "{}{}",
-            "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n", response_body
-        );
+        let mut headers: HashMap<String, String> = HashMap::new();
+        headers.insert("Content-Type".to_string(), "text/html".to_string());
 
-        let response = responder.respond(request, &config).unwrap();
-        assert_eq!(response_body, response);
+        let expected_response = http::response::Message::new(
+            "HTTP/1.1".to_string(),
+            "200 OK".to_string(),
+            headers,
+            response_body
+        );
+        let expected_response = expected_response.unwrap().to_string();
+
+        let given_response = responder.respond(request, &config).unwrap();
+        assert_eq!(expected_response, given_response);
     }
 }
