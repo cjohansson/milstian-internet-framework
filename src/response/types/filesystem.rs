@@ -10,7 +10,7 @@ use Config;
 
 pub struct Responder {
     pub filename: Option<String>,
-    pub request_message: Option<http::RequestMessage>,
+    pub request_message: Option<http::request::Message>,
 }
 
 impl Responder {
@@ -24,7 +24,7 @@ impl Responder {
 
 impl Type<Responder> for Responder {
     fn matches(&mut self, request: &[u8], config: &Config) -> bool {
-        if let Some(request_message) = http::RequestMessage::from_tcp_stream(request) {
+        if let Some(request_message) = http::request::Message::from_tcp_stream(request) {
             let mut filename = request_message.request_line.request_uri_base.clone();
             if filename.starts_with("/") {
                 filename.remove(0);
@@ -68,7 +68,7 @@ impl Type<Responder> for Responder {
                             let status_code = "200 OK";
 
                             // let procotol = self.request_message.unwrap().request_line.protocol
-                            let protocol = http::RequestMessage::get_protocol_text(&self.request_message.as_ref().unwrap().request_line.protocol);
+                            let protocol = http::request::Message::get_protocol_text(&self.request_message.as_ref().unwrap().request_line.protocol);
 
                             // TODO Make these more dynamic
                             // Build HTTP response headers
@@ -135,7 +135,6 @@ mod filesystem_test {
         let request = b"GET / HTTP/1.1";
 
         let matches = responder.matches(request, &config);
-
         assert!(matches);
 
         // Add HTTP headers
