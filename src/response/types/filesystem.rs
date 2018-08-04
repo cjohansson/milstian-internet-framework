@@ -1,12 +1,13 @@
 use std;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use std::time::Duration;
-use std::collections::HashMap;
 
-use transport_protocol::http;
+use mime;
 use response::Type;
+use transport_protocol::http;
 use Config;
 
 pub struct Responder {
@@ -54,40 +55,45 @@ impl Type<Responder> for Responder {
 
         // Does filename exist?
         if let Some(filename) = &self.filename {
-
             // Try to open the file
             let file = File::open(filename);
             match file {
-                Ok(mut file) =>{
-
+                Ok(mut file) => {
                     // Try to read the file
                     match file.read_to_string(&mut response_body) {
                         Ok(_) => {
-
                             // TODO Make this dynamic
                             let status_code = "200 OK";
 
-                            let protocol = http::request::Message::get_protocol_text(&self.request_message.as_ref().unwrap().request_line.protocol);
+                            let protocol = http::request::Message::get_protocol_text(
+                                &self.request_message.as_ref().unwrap().request_line.protocol,
+                            );
                             let mut headers: HashMap<String, String> = HashMap::new();
 
-                            // TODO Dynamic MIME here
-                            headers.insert("Content-Type".to_string(), "text/html".to_string());
+                            headers
+                                .insert("Content-Type".to_string(), mime::from_filename(&filename));
 
                             // Build HTTP response
                             return Ok(http::response::Message::new(
                                 protocol.to_string(),
                                 status_code.to_string(),
                                 headers,
-                                response_body
+                                response_body,
                             ).to_string());
-                        },
+                        }
                         Err(e) => {
-                            return Err(format!("Error: Failed to read file {}, error: {:?}", filename, e));
+                            return Err(format!(
+                                "Error: Failed to read file {}, error: {:?}",
+                                filename, e
+                            ));
                         }
                     }
-                },
+                }
                 Err(e) => {
-                    return Err(format!("Error: Failed to open file {}, error: {:?}", filename, e));
+                    return Err(format!(
+                        "Error: Failed to open file {}, error: {:?}",
+                        filename, e
+                    ));
                 }
             }
         } else {
@@ -144,7 +150,7 @@ mod filesystem_test {
             "HTTP/1.1".to_string(),
             "200 OK".to_string(),
             headers,
-            response_body
+            response_body,
         ).to_string();
 
         let given_response = responder.respond(request, &config).unwrap();

@@ -166,7 +166,7 @@ impl Message {
         }
     }
 
-    // TODO This associated function should parse body based on encoding
+    // TODO This associated function should parse body based on content encoding
     pub fn get_message_body(body: &str) -> Option<HashMap<String, String>> {
         Message::get_query_args_from_string(body)
     }

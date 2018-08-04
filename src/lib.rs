@@ -1,9 +1,10 @@
 use std::env;
 use std::net::TcpListener;
 
+mod mime;
 mod response;
-mod transport_protocol;
 mod thread;
+mod transport_protocol;
 
 use response::Dispatcher;
 use thread::Pool;
