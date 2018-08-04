@@ -51,7 +51,6 @@ impl Type<Responder> for Responder {
     // Make this respond headers as a HashMap and a string for body
     fn respond(&self, _request: &[u8], _config: &Config) -> Result<String, String> {
         let mut response_body = String::new();
-        let mut response_headers = String::new();
 
         // Does filename exist?
         if let Some(filename) = &self.filename {
@@ -68,19 +67,19 @@ impl Type<Responder> for Responder {
                             // TODO Make this dynamic
                             let status_code = "200 OK";
 
-                            // let procotol = self.request_message.unwrap().request_line.protocol
                             let protocol = http::request::Message::get_protocol_text(&self.request_message.as_ref().unwrap().request_line.protocol);
+                            let mut headers: HashMap<String, String> = HashMap::new();
 
-                            // TODO Make these more dynamic
-                            // Build HTTP response headers
-                            response_headers.push_str(&format!("{} {}\r\n", protocol, status_code));
-                            response_headers.push_str("Content-Type: text/html\r\n");
-
-                            // TODO Add more headers here
-                            response_headers.push_str("\r\n");
+                            // TODO Dynamic MIME here
+                            headers.insert("Content-Type".to_string(), "text/html".to_string());
 
                             // Build HTTP response
-                            return Ok(format!("{}{}", response_headers, response_body));
+                            return Ok(http::response::Message::new(
+                                protocol.to_string(),
+                                status_code.to_string(),
+                                headers,
+                                response_body
+                            ).to_string());
                         },
                         Err(e) => {
                             return Err(format!("Error: Failed to read file {}, error: {:?}", filename, e));
@@ -146,8 +145,7 @@ mod filesystem_test {
             "200 OK".to_string(),
             headers,
             response_body
-        );
-        let expected_response = expected_response.unwrap().to_string();
+        ).to_string();
 
         let given_response = responder.respond(request, &config).unwrap();
         assert_eq!(expected_response, given_response);

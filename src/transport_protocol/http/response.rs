@@ -8,13 +8,13 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn new(protocol: String, status: String, headers: HashMap<String, String>, body: String) -> Result<Message, String> {
-        Ok(Message {
+    pub fn new(protocol: String, status: String, headers: HashMap<String, String>, body: String) -> Message {
+        Message {
             protocol,
             status,
             headers,
             body
-        })
+        }
     }
 
     pub fn to_string(&self) -> String {
