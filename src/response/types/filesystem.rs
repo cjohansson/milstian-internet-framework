@@ -1,6 +1,7 @@
 use std;
 use std::collections::HashMap;
 use std::fs::File;
+use std::fs;
 use std::io::prelude::*;
 use std::path::Path;
 use std::time::Duration;
@@ -62,7 +63,7 @@ impl Type<Responder> for Responder {
                     // Try to read the file
                     match file.read_to_string(&mut response_body) {
                         Ok(_) => {
-                            // TODO Make this dynamic
+                            // TODO Make this dynamic, support Not Modified as well
                             let status_code = "200 OK";
 
                             let protocol = http::request::Message::get_protocol_text(
@@ -72,6 +73,15 @@ impl Type<Responder> for Responder {
 
                             headers
                                 .insert("Content-Type".to_string(), mime::from_filename(&filename));
+
+                            if let Ok(metadata) = fs::metadata(&filename) {
+                                headers.insert("Content-Length".to_string(), metadata.len().to_string());
+
+                                if let Ok(last_modified) = metadata.modified() {
+                                    // headers.insert("Last-Modified".to_string(), last_modified.to_string());
+                                    // panic!(format!("Last-Modified: {:?}", last_modified));
+                                }
+                            }
 
                             // Build HTTP response
                             return Ok(http::response::Message::new(
@@ -144,6 +154,7 @@ mod filesystem_test {
         assert!(matches);
 
         let mut headers: HashMap<String, String> = HashMap::new();
+        headers.insert("Content-Length".to_string(), "203".to_string());
         headers.insert("Content-Type".to_string(), "text/html".to_string());
 
         let expected_response = http::response::Message::new(
