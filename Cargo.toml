@@ -4,3 +4,4 @@ version = "0.1.0"
 authors = ["Christian Johansson <christian@cvj.se>"]
 
 [dependencies]
+chrono = "0.4"

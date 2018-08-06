@@ -1,10 +1,13 @@
 use std;
 use std::collections::HashMap;
-use std::fs::File;
 use std::fs;
+use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use std::time::Duration;
+
+use chrono::offset::Utc;
+use chrono::DateTime;
 
 use mime;
 use response::Type;
@@ -64,6 +67,7 @@ impl Type<Responder> for Responder {
                     match file.read_to_string(&mut response_body) {
                         Ok(_) => {
                             // TODO Make this dynamic, support Not Modified as well
+                            // TODO Support If-None-Match, If-Modified-Since
                             let status_code = "200 OK";
 
                             let protocol = http::request::Message::get_protocol_text(
@@ -74,12 +78,23 @@ impl Type<Responder> for Responder {
                             headers
                                 .insert("Content-Type".to_string(), mime::from_filename(&filename));
 
+                            // TODO Add support for Etag, Cache-Control and Expires
+
                             if let Ok(metadata) = fs::metadata(&filename) {
-                                headers.insert("Content-Length".to_string(), metadata.len().to_string());
+                                headers.insert(
+                                    "Content-Length".to_string(),
+                                    metadata.len().to_string(),
+                                );
 
                                 if let Ok(last_modified) = metadata.modified() {
+                                    let datetime: DateTime<Utc> = last_modified.into();
+                                    let last_modified_formatted = format!(
+                                        "{}",
+                                        datetime.format("%d/%m/%Y %T")
+                                    );
                                     // headers.insert("Last-Modified".to_string(), last_modified.to_string());
                                     // panic!(format!("Last-Modified: {:?}", last_modified));
+                                    panic!(format!("{}", last_modified_formatted));
                                 }
                             }
 
