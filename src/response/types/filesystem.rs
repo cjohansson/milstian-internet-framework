@@ -26,7 +26,7 @@ impl Responder {
         }
     }
 
-    fn get_modified_rfc7231(modified: SystemTime) -> String {
+    fn get_metadatamodified_as_rfc7231(modified: SystemTime) -> String {
         let datetime: DateTime<Utc> = modified.into();
         format!("{}", datetime.format("%a, %d %b %Y %H:%M:%S GMT"))
     }
@@ -88,7 +88,7 @@ impl Type<Responder> for Responder {
 
                                 if let Ok(last_modified) = metadata.modified() {
                                     let last_modified_formatted =
-                                        Responder::get_modified_rfc7231(last_modified);
+                                        Responder::get_metadatamodified_as_rfc7231(last_modified);
                                     headers.insert(
                                         "Last-Modified".to_string(),
                                         last_modified_formatted.to_string(),
