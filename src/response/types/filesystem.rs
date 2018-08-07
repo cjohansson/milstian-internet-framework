@@ -164,7 +164,7 @@ mod filesystem_test {
 
         file.read_to_string(&mut response_body).unwrap();
 
-        let request = b"GET / HTTP/1.1";
+        let request = b"GET / HTTP/1.1\r\n\r\n";
 
         let matches = responder.matches(request, &config);
         assert!(matches);

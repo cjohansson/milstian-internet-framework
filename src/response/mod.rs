@@ -16,27 +16,27 @@ impl Dispatcher {
         // Create a array with 512 elements containing the value 0
         let mut buffer = [0; 512];
 
-        // TODO Handle this unwrap
-        stream.read(&mut buffer).unwrap();
+        if let Ok(_) = stream.read(&mut buffer) {
+            let mut response = String::from("");
+            let mut filesystem = filesystem::Responder::new();
 
-        let mut response = String::from("");
-        let mut filesystem = filesystem::Responder::new();
+            if filesystem.matches(&buffer, &config) {
+                if let Ok(filesystem_response) = filesystem.respond(&buffer, &config) {
+                    response = filesystem_response;
+                }
+            }
+            // TODO Add more response types here: page, ajax
 
-        if filesystem.matches(&buffer, &config) {
-            // TODO Handle this unwrap
-            response = filesystem.respond(&buffer, &config).unwrap();
-        }
-        // TODO Add more response types here: page, ajax
-
-        if !response.is_empty() {
-            // Flush HTTP response
-            stream.write(response.as_bytes()).unwrap();
-            stream.flush().unwrap();
-        } else {
-            eprintln!(
-                "Found no response for request {:?}",
-                str::from_utf8(&buffer)
-            );
+            if !response.is_empty() {
+                // Flush HTTP response
+                stream.write(response.as_bytes()).unwrap();
+                stream.flush().unwrap();
+            } else {
+                eprintln!(
+                    "Found no response for request {:?}",
+                    str::from_utf8(&buffer)
+                );
+            }
         }
     }
 }
