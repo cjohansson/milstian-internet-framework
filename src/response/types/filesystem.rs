@@ -90,11 +90,11 @@ impl Type<Responder> for Responder {
                                     let datetime: DateTime<Utc> = last_modified.into();
                                     let last_modified_formatted = format!(
                                         "{}",
-                                        datetime.format("%d/%m/%Y %T")
+                                        datetime.format("%a, %d %b %Y %H:%M:%S GMT")
                                     );
-                                    // headers.insert("Last-Modified".to_string(), last_modified.to_string());
+                                    headers.insert("Last-Modified".to_string(), last_modified_formatted.to_string());
                                     // panic!(format!("Last-Modified: {:?}", last_modified));
-                                    panic!(format!("{}", last_modified_formatted));
+                                    // panic!(format!("{}", last_modified_formatted));
                                 }
                             }
 
