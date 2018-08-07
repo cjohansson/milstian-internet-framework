@@ -21,7 +21,9 @@ impl Message {
         let mut response = format!("{} {}\r\n", &self.protocol, &self.status);
 
         if !&self.headers.is_empty() {
-            for (key, value) in &self.headers {
+            let mut headers: Vec<(&String, &String)> = self.headers.iter().collect();
+            headers.sort_by(|a,b| a.cmp(b));
+            for (key, value) in headers {
                 response.push_str(&format!("{}: {}\r\n", &key, &value));
             }
             response.push_str("\r\n");

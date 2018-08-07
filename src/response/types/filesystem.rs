@@ -1,10 +1,9 @@
-use std;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
-use std::time::Duration;
+use std::time::SystemTime;
 
 use chrono::offset::Utc;
 use chrono::DateTime;
@@ -25,6 +24,11 @@ impl Responder {
             filename: None,
             request_message: None,
         }
+    }
+
+    fn get_modified_rfc7231(modified: SystemTime) -> String {
+        let datetime: DateTime<Utc> = modified.into();
+        format!("{}", datetime.format("%a, %d %b %Y %H:%M:%S GMT"))
     }
 }
 
@@ -66,9 +70,7 @@ impl Type<Responder> for Responder {
                     // Try to read the file
                     match file.read_to_string(&mut response_body) {
                         Ok(_) => {
-                            // TODO Make this dynamic, support Not Modified as well
-                            // TODO Support If-None-Match, If-Modified-Since
-                            let status_code = "200 OK";
+                            let mut status_code = "200 OK";
 
                             let protocol = http::request::Message::get_protocol_text(
                                 &self.request_message.as_ref().unwrap().request_line.protocol,
@@ -78,8 +80,6 @@ impl Type<Responder> for Responder {
                             headers
                                 .insert("Content-Type".to_string(), mime::from_filename(&filename));
 
-                            // TODO Add support for Etag, Cache-Control and Expires
-
                             if let Ok(metadata) = fs::metadata(&filename) {
                                 headers.insert(
                                     "Content-Length".to_string(),
@@ -87,14 +87,15 @@ impl Type<Responder> for Responder {
                                 );
 
                                 if let Ok(last_modified) = metadata.modified() {
-                                    let datetime: DateTime<Utc> = last_modified.into();
-                                    let last_modified_formatted = format!(
-                                        "{}",
-                                        datetime.format("%a, %d %b %Y %H:%M:%S GMT")
+                                    let last_modified_formatted =
+                                        Responder::get_modified_rfc7231(last_modified);
+                                    headers.insert(
+                                        "Last-Modified".to_string(),
+                                        last_modified_formatted.to_string(),
                                     );
-                                    headers.insert("Last-Modified".to_string(), last_modified_formatted.to_string());
-                                    // panic!(format!("Last-Modified: {:?}", last_modified));
-                                    // panic!(format!("{}", last_modified_formatted));
+
+                                    // TODO Add Expires, Etag and Cache-Control here
+                                    // TODO Support If-Modified-Since and If-None-Match here
                                 }
                             }
 
@@ -169,6 +170,10 @@ mod filesystem_test {
         assert!(matches);
 
         let mut headers: HashMap<String, String> = HashMap::new();
+        headers.insert(
+            "Last-Modified".to_string(),
+            "Sun, 17 Jun 2018 08:14:24 GMT".to_string(),
+        );
         headers.insert("Content-Length".to_string(), "203".to_string());
         headers.insert("Content-Type".to_string(), "text/html".to_string());
 
