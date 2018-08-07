@@ -26,7 +26,7 @@ impl Responder {
         }
     }
 
-    fn get_metadatamodified_as_rfc7231(modified: SystemTime) -> String {
+    fn get_metadata_modified_as_rfc7231(modified: SystemTime) -> String {
         let datetime: DateTime<Utc> = modified.into();
         format!("{}", datetime.format("%a, %d %b %Y %H:%M:%S GMT"))
     }
@@ -87,11 +87,9 @@ impl Type<Responder> for Responder {
                                 );
 
                                 if let Ok(last_modified) = metadata.modified() {
-                                    let last_modified_formatted =
-                                        Responder::get_metadatamodified_as_rfc7231(last_modified);
                                     headers.insert(
                                         "Last-Modified".to_string(),
-                                        last_modified_formatted.to_string(),
+                                        Responder::get_metadata_modified_as_rfc7231(last_modified)
                                     );
 
                                     // TODO Add Expires, Etag and Cache-Control here
@@ -157,7 +155,9 @@ mod filesystem_test {
         };
         let mut responder = Responder::new();
 
-        let mut file = File::open("html/index.htm").unwrap();
+        let filename = "html/index.htm";
+
+        let mut file = File::open(&filename).unwrap();
 
         // Build response body
         let mut response_body = String::new();
@@ -170,12 +170,16 @@ mod filesystem_test {
         assert!(matches);
 
         let mut headers: HashMap<String, String> = HashMap::new();
-        headers.insert(
-            "Last-Modified".to_string(),
-            "Sun, 17 Jun 2018 08:14:24 GMT".to_string(),
-        );
-        headers.insert("Content-Length".to_string(), "203".to_string());
-        headers.insert("Content-Type".to_string(), "text/html".to_string());
+        if let Ok(metadata) = fs::metadata(&filename) {
+            if let Ok(last_modified) = metadata.modified() {
+                headers.insert(
+                    "Last-Modified".to_string(),
+                    Responder::get_metadata_modified_as_rfc7231(last_modified)
+                );
+            }
+            headers.insert("Content-Length".to_string(), metadata.len().to_string());
+        }
+        headers.insert("Content-Type".to_string(), mime::from_filename(&filename));
 
         let expected_response = http::response::Message::new(
             "HTTP/1.1".to_string(),
