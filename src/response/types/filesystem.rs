@@ -45,14 +45,23 @@ impl Type<Responder> for Responder {
             if exists {
                 is_dir = Path::new(&filename).is_dir();
                 if is_dir {
-                    filename = format!("{}{}", &filename, &config.filesystem_index);
+                    filename = format!("{}/{}", &filename, &config.filesystem_index);
                     exists = Path::new(&filename).exists();
                     is_dir = Path::new(&filename).is_dir()
                 }
             }
+            if !exists {
+                eprintln!("File does not exists {}", &filename);
+            }
+            if is_dir {
+                eprintln!("File is a directory {}", &filename);
+            }
+
             self.request_message = Some(request_message);
             self.filename = Some(filename);
             return exists && !is_dir;
+        } else {
+            eprintln!("Failed to get HTTP request from TCP stream");
         }
         false
     }
@@ -89,7 +98,7 @@ impl Type<Responder> for Responder {
                                 if let Ok(last_modified) = metadata.modified() {
                                     headers.insert(
                                         "Last-Modified".to_string(),
-                                        Responder::get_metadata_modified_as_rfc7231(last_modified)
+                                        Responder::get_metadata_modified_as_rfc7231(last_modified),
                                     );
 
                                     // TODO Add Expires, Etag and Cache-Control here
@@ -174,7 +183,7 @@ mod filesystem_test {
             if let Ok(last_modified) = metadata.modified() {
                 headers.insert(
                     "Last-Modified".to_string(),
-                    Responder::get_metadata_modified_as_rfc7231(last_modified)
+                    Responder::get_metadata_modified_as_rfc7231(last_modified),
                 );
             }
             headers.insert("Content-Length".to_string(), metadata.len().to_string());

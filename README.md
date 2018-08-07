@@ -18,5 +18,9 @@ This project is based on the programming exercise *Building a multithreaded web 
 
 * Use rust-fmt, an Emacs hook is included via DirectoryVariables.
 
+## Run local server
+
+`cargo run localhost 8888 10 index.html "/Users/christianjohansson/Documents/Rust Projects/milstian/html/"`
+
 ## License
 This project is under the **GPLv3** license
