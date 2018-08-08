@@ -29,8 +29,22 @@ impl Dispatcher {
 
             if !response.is_empty() {
                 // Flush HTTP response
-                stream.write(response.as_bytes()).unwrap();
-                stream.flush().unwrap();
+                match stream.write(response.as_bytes()) {
+                    Ok(_) => {
+                        if let Err(error) = stream.flush() {
+                            eprintln!(
+                                "Failed to flush TCP stream, error: {}",
+                                error
+                            );
+                        }
+                    },
+                    Err(error) => {
+                        eprintln!(
+                            "Failed to write TCP stream, error: {}",
+                            error
+                        );
+                    }
+                }
             } else {
                 eprintln!(
                     "Found no response for request {:?}",
