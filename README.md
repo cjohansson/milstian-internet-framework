@@ -20,7 +20,11 @@ This project is based on the programming exercise *Building a multithreaded web 
 
 ## Run local server
 
-`cargo run localhost 8888 10 index.html "/Users/christianjohansson/Documents/Rust Projects/milstian/html/"`
+`cargo run localhost 8888 10 index.html ../html/`
+
+## Run tests
+
+`cargo test`
 
 ## License
 This project is under the **GPLv3** license

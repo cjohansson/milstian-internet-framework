@@ -36,10 +36,7 @@ impl Type<Responder> for Responder {
     fn matches(&mut self, request: &[u8], config: &Config) -> bool {
         if let Some(request_message) = http::request::Message::from_tcp_stream(request) {
             let mut filename = request_message.request_line.request_uri_base.clone();
-            if filename.starts_with("/") {
-                filename.remove(0);
-            }
-            let mut filename = format!("{}{}", &config.filesystem_root, &filename);
+            filename = format!("{}{}", &config.filesystem_root, &filename);
             let mut exists = Path::new(&filename).exists();
             let mut is_dir = false;
             if exists {

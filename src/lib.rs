@@ -1,6 +1,8 @@
 extern crate chrono;
 
 use std::env;
+use std::fs;
+use std::path::PathBuf;
 use std::net::TcpListener;
 
 mod mime;
@@ -26,21 +28,33 @@ pub struct Config {
 impl Config {
     /// This method takes a vector of strings and creates a config struct
     /// based on index 1 (server), 2 (port) and 3 (limit)
-    pub fn from_env_args(args: Vec<String>) -> Result<Config, &'static str> {
+    pub fn from_env_args(args: Vec<String>) -> Result<Config, String> {
         if args.len() < 5 {
-            return Err("Not enough shell arguments!");
+            return Err("Not enough shell arguments!".to_string());
         }
         let server_limit: usize = match args[3].clone().parse() {
             Ok(num) => num,
-            Err(_) => return Err("Failed to parse limit!"),
+            Err(_) => return Err("Failed to parse limit!".to_string()),
         };
         let server_port: u32 = match args[2].clone().parse() {
             Ok(num) => num,
-            Err(_) => return Err("Failed to parse port!"),
+            Err(_) => return Err("Failed to parse port!".to_string()),
         };
         let server_host = args[1].clone();
         let filesystem_index = args[4].clone();
-        let filesystem_root = args[5].clone();
+        let mut filesystem_root = args[5].clone();
+        let root_path = PathBuf::from(&filesystem_root);
+        match fs::canonicalize(root_path) {
+            Ok(canonical_root) =>  {
+                if let Some(canonical_root) = canonical_root.to_str() {
+                    filesystem_root = canonical_root.to_string();
+                } else {
+                    return Err(format!("Failed to convert canonical root to string {:?}", canonical_root));
+                }
+            },
+            Err(error) => { return Err(format!("Could not find canonical path from: {}, error: {}", &filesystem_root, &error));
+            }
+        }
         Ok(Config {
             filesystem_index,
             filesystem_root,
@@ -52,7 +66,7 @@ impl Config {
 
     /// This method collects arguments from environment
     /// and passes them on to method from_env_args
-    pub fn from_env() -> Result<Config, &'static str> {
+    pub fn from_env() -> Result<Config, String> {
         Config::from_env_args(env::args().collect())
     }
 }
@@ -99,7 +113,7 @@ pub struct Application;
 
 impl Application {
     /// This method creates a new application based on configuration
-    pub fn new(config: Result<Config, &'static str>) -> Result<Application, &'static str> {
+    pub fn new(config: Result<Config, String>) -> Result<Application, String> {
         let config = config?;
         let path = format!("{}:{}", &config.server_host, &config.server_port);
         let listener = TcpListener::bind(&path);
@@ -117,13 +131,13 @@ impl Application {
                             });
                         }
                         Err(e) => {
-                            println!("Failed to listen to incoming stream, error: {}", e);
+                            eprintln!("Failed to listen to incoming stream, error: {}", e);
                         }
                     }
                 }
             }
             Err(e) => {
-                println!("Failed to bind to server and port, error: {}", e);
+                eprintln!("Failed to bind to server and port, error: {}", e);
             }
         }
 
