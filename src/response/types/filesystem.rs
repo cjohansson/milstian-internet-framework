@@ -42,7 +42,7 @@ impl Type<Responder> for Responder {
             if exists {
                 is_dir = Path::new(&filename).is_dir();
                 if is_dir {
-                    filename = format!("{}/{}", &filename, &config.filesystem_index);
+                    filename = format!("{}{}", &filename, &config.filesystem_index);
                     exists = Path::new(&filename).exists();
                     is_dir = Path::new(&filename).is_dir()
                 }

@@ -20,7 +20,7 @@ This project is based on the programming exercise *Building a multithreaded web 
 
 ## Run local server
 
-`cargo run localhost 8888 10 index.html ../html/`
+`cargo run localhost 8888 10 index.htm ../html/`
 
 ## Run tests
 
