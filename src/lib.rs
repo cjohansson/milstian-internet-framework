@@ -15,7 +15,8 @@ use thread::Pool;
 
 #[derive(Clone, Debug)]
 pub struct Config {
-    pub filesystem_index: String,
+    pub filesystem_directory_index: String,
+    pub filesystem_file_not_found: String,
     pub filesystem_root: String,
     pub server_limit: usize,
     pub server_host: String,
@@ -29,7 +30,7 @@ impl Config {
     /// This method takes a vector of strings and creates a config struct
     /// based on index 1 (server), 2 (port) and 3 (limit)
     pub fn from_env_args(args: Vec<String>) -> Result<Config, String> {
-        if args.len() < 5 {
+        if args.len() < 6 {
             return Err("Not enough shell arguments!".to_string());
         }
         let server_limit: usize = match args[3].clone().parse() {
@@ -41,8 +42,9 @@ impl Config {
             Err(_) => return Err("Failed to parse port!".to_string()),
         };
         let server_host = args[1].clone();
-        let filesystem_index = args[4].clone();
+        let filesystem_directory_index = args[4].clone();
         let mut filesystem_root = args[5].clone();
+        let filesystem_file_not_found = args[6].clone();
         let root_path = PathBuf::from(&filesystem_root);
         match fs::canonicalize(root_path) {
             Ok(canonical_root) =>  {
@@ -56,7 +58,8 @@ impl Config {
             }
         }
         Ok(Config {
-            filesystem_index,
+            filesystem_directory_index,
+            filesystem_file_not_found,
             filesystem_root,
             server_limit,
             server_host,
@@ -85,6 +88,7 @@ mod config_test {
             String::from("4"),
             String::from("index.htm"),
             String::from("./html/"),
+            String::from("404.htm"),
         ]);
         assert!(response.is_ok());
 
@@ -101,9 +105,10 @@ mod config_test {
             String::from("ignore this"),
             String::from("127.0.0.1"),
             String::from("7878"),
-            String::from("coffee"),
+            String::from("4"),
             String::from("index.htm"),
-            String::from("./html/"),
+            String::from("./htmls/"),
+            String::from("404.htm"),
         ]);
         assert!(response.is_err());
     }

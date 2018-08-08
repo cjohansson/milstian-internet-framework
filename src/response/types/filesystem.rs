@@ -42,7 +42,7 @@ impl Type<Responder> for Responder {
             if exists {
                 is_dir = Path::new(&filename).is_dir();
                 if is_dir {
-                    filename = format!("{}{}", &filename, &config.filesystem_index);
+                    filename = format!("{}{}", &filename, &config.filesystem_directory_index);
                     exists = Path::new(&filename).exists();
                     is_dir = Path::new(&filename).is_dir()
                 }
@@ -138,7 +138,8 @@ mod filesystem_test {
     #[test]
     fn matches() {
         let config = Config {
-            filesystem_index: "index.htm".to_string(),
+            filesystem_directory_index: "index.htm".to_string(),
+            filesystem_file_not_found: "404.htm".to_string(),
             filesystem_root: "./html/".to_string(),
             server_host: "localhost".to_string(),
             server_limit: 4,
@@ -153,7 +154,8 @@ mod filesystem_test {
     #[test]
     fn respond() {
         let config = Config {
-            filesystem_index: "index.htm".to_string(),
+            filesystem_directory_index: "index.htm".to_string(),
+            filesystem_file_not_found: "404.htm".to_string(),
             filesystem_root: "./html/".to_string(),
             server_host: "localhost".to_string(),
             server_limit: 4,
