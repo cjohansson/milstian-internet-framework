@@ -54,6 +54,8 @@ impl Type<Responder> for Responder {
                 eprintln!("File is a directory {}", &filename);
             }
 
+            // TODO Need to check that the canonical filename is below the canonical root
+
             self.request_message = Some(request_message);
             self.filename = Some(filename);
             return exists && !is_dir;
