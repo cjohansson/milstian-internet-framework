@@ -4,7 +4,7 @@ use std::io::prelude::*;
 use std::net::TcpStream;
 use std::str;
 
-use self::types::filesystem;
+use self::types::http::filesystem;
 use Config;
 
 // This struct should handle the dispatching of requests to a specific response type
@@ -25,7 +25,7 @@ impl Dispatcher {
                     response = filesystem_response;
                 }
             }
-            // TODO Add more response types here: page, ajax
+            // TODO Add more http response types here: not found, page, ajax, invalid request
 
             if !response.is_empty() {
                 // Flush HTTP response
