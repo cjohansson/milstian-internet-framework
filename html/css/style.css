@@ -4,3 +4,10 @@ body {
     font-size: 14px;
     line-height: 1.2;
 }
+.wrapper {
+    margin: 50px auto 0 auto;
+    max-width: 960px;
+}
+.wrapper img {
+    max-width: 100%;
+}
