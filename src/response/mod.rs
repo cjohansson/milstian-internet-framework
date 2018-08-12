@@ -4,8 +4,8 @@ use std::io::prelude::*;
 use std::net::TcpStream;
 use std::str;
 
-use self::types::http::filesystem;
 use self::types::http::file_not_found;
+use self::types::http::filesystem;
 use Config;
 
 // This struct should handle the dispatching of requests to a specific response type
@@ -23,16 +23,17 @@ impl Dispatcher {
             let mut file_not_found = file_not_found::Responder::new();
 
             if filesystem.matches(&buffer, &config) {
-                if let Ok(filesystem_response) = filesystem.respond(&buffer, &config) {
-                    response = filesystem_response;
+                match filesystem.respond(&buffer, &config) {
+                    Ok(filesystem_response) => { response = filesystem_response; },
+                    Err(error) => { eprintln!("Filesystem error: {}", error); }
+                }
+            } else if file_not_found.matches(&buffer, &config) {
+                match file_not_found.respond(&buffer, &config) {
+                    Ok(file_not_found_response) => { response = file_not_found_response; }
+                    Err(error) => { eprintln!("File Not Found error: {}", error); }
                 }
             }
-            if file_not_found.matches(&buffer, &config) {
-                if let Ok(file_not_found_response) = file_not_found.respond(&buffer, &config) {
-                    response = file_not_found_response;
-                }
-            }
-            
+
             // TODO Add more http response types here: not found, page, ajax, invalid request
 
             if !response.is_empty() {
@@ -40,17 +41,11 @@ impl Dispatcher {
                 match stream.write(response.as_bytes()) {
                     Ok(_) => {
                         if let Err(error) = stream.flush() {
-                            eprintln!(
-                                "Failed to flush TCP stream, error: {}",
-                                error
-                            );
+                            eprintln!("Failed to flush TCP stream, error: {}", error);
                         }
-                    },
+                    }
                     Err(error) => {
-                        eprintln!(
-                            "Failed to write TCP stream, error: {}",
-                            error
-                        );
+                        eprintln!("Failed to write TCP stream, error: {}", error);
                     }
                 }
             } else {

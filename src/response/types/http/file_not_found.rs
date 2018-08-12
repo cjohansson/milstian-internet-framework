@@ -32,11 +32,13 @@ impl Type<Responder> for Responder {
             request_filename = format!("{}{}", &config.filesystem_root, &request_filename);
             let request_exists = Path::new(&request_filename).exists();
             
-            let filename = format!("{}{}", &config.filesystem_root, &config.file_not_found_file);
+            let filename = format!("{}/{}", &config.filesystem_root, &config.file_not_found_file);
             let exists = Path::new(&filename).exists();
             let mut is_dir = false;
             if exists {
                 is_dir = Path::new(&filename).is_dir();
+            } else {
+                eprintln!("File not found file does not exists {}", &filename);
             }
             self.filename = Some(filename);
             self.request_message = Some(request_message);
