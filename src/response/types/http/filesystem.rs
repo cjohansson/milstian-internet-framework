@@ -66,8 +66,8 @@ impl Type<Responder> for Responder {
     }
 
     // Make this respond headers as a HashMap and a string for body
-    fn respond(&self, _request: &[u8], _config: &Config) -> Result<String, String> {
-        let mut response_body = String::new();
+    fn respond(&self, _request: &[u8], _config: &Config) -> Result<Vec<u8>, String> {
+        let mut response_body = Vec::new();
 
         // Does filename exist?
         if let Some(filename) = &self.filename {
@@ -76,7 +76,7 @@ impl Type<Responder> for Responder {
             match file {
                 Ok(mut file) => {
                     // Try to read the file
-                    match file.read_to_string(&mut response_body) {
+                    match file.read_to_end(&mut response_body) {
                         Ok(_) => {
                             let mut status_code = "200 OK";
 
@@ -111,7 +111,7 @@ impl Type<Responder> for Responder {
                                 status_code.to_string(),
                                 headers,
                                 response_body,
-                            ).to_string());
+                            ).to_bytes());
                         }
                         Err(e) => {
                             return Err(format!(
@@ -195,8 +195,8 @@ mod filesystem_test {
             "HTTP/1.1".to_string(),
             "200 OK".to_string(),
             headers,
-            response_body,
-        ).to_string();
+            response_body.into_bytes(),
+        ).to_bytes();
 
         let given_response = responder.respond(request, &config).unwrap();
         assert_eq!(expected_response, given_response);

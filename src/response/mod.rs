@@ -18,7 +18,7 @@ impl Dispatcher {
         let mut buffer = [0; 512];
 
         if let Ok(_) = stream.read(&mut buffer) {
-            let mut response = String::from("");
+            let mut response = Vec::new();
             let mut filesystem = filesystem::Responder::new();
             let mut file_not_found = file_not_found::Responder::new();
 
@@ -38,7 +38,7 @@ impl Dispatcher {
 
             if !response.is_empty() {
                 // Flush HTTP response
-                match stream.write(response.as_bytes()) {
+                match stream.write(&response) {
                     Ok(_) => {
                         if let Err(error) = stream.flush() {
                             eprintln!("Failed to flush TCP stream, error: {}", error);
@@ -61,5 +61,5 @@ impl Dispatcher {
 // This is the trait that all response types implement
 trait Type<T> {
     fn matches(&mut self, request: &[u8], config: &Config) -> bool;
-    fn respond(&self, request: &[u8], config: &Config) -> Result<String, String>;
+    fn respond(&self, request: &[u8], config: &Config) -> Result<Vec<u8>, String>;
 }

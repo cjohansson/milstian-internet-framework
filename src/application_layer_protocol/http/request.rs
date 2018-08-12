@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use std::str;
 
-// TODO Split this into response and request and use request to build response from filesystem response type
-
 // TODO Should support parsing of different message body encodings
 // TODO Support multi-part message bodies and gzip
 // TODO Support keep-alive
