@@ -5,6 +5,7 @@ use std::net::TcpStream;
 use std::str;
 
 use self::types::http::filesystem;
+use self::types::http::file_not_found;
 use Config;
 
 // This struct should handle the dispatching of requests to a specific response type
@@ -19,12 +20,19 @@ impl Dispatcher {
         if let Ok(_) = stream.read(&mut buffer) {
             let mut response = String::from("");
             let mut filesystem = filesystem::Responder::new();
+            let mut file_not_found = file_not_found::Responder::new();
 
             if filesystem.matches(&buffer, &config) {
                 if let Ok(filesystem_response) = filesystem.respond(&buffer, &config) {
                     response = filesystem_response;
                 }
             }
+            if file_not_found.matches(&buffer, &config) {
+                if let Ok(file_not_found_response) = file_not_found.respond(&buffer, &config) {
+                    response = file_not_found_response;
+                }
+            }
+            
             // TODO Add more http response types here: not found, page, ajax, invalid request
 
             if !response.is_empty() {

@@ -8,15 +8,15 @@ use std::net::TcpListener;
 mod mime;
 mod response;
 mod thread;
-mod transport_protocol;
+mod application_layer_protocol;
 
 use response::Dispatcher;
 use thread::Pool;
 
 #[derive(Clone, Debug)]
 pub struct Config {
+    pub file_not_found_file: String,
     pub filesystem_directory_index: String,
-    pub filesystem_file_not_found: String,
     pub filesystem_root: String,
     pub server_limit: usize,
     pub server_host: String,
@@ -44,7 +44,7 @@ impl Config {
         let server_host = args[1].clone();
         let filesystem_directory_index = args[4].clone();
         let mut filesystem_root = args[5].clone();
-        let filesystem_file_not_found = args[6].clone();
+        let file_not_found_file = args[6].clone();
         let root_path = PathBuf::from(&filesystem_root);
         match fs::canonicalize(root_path) {
             Ok(canonical_root) =>  {
@@ -59,7 +59,7 @@ impl Config {
         }
         Ok(Config {
             filesystem_directory_index,
-            filesystem_file_not_found,
+            file_not_found_file,
             filesystem_root,
             server_limit,
             server_host,

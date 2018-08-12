@@ -2,14 +2,14 @@
 
 In progress, primarily used for learning Rust programming.
 
-This project is based on the programming exercise *Building a multithreaded web server* from the book *The Rust Programming Language* (*no starch press 2018*) and the *Aomebo Web Framework for PHP*.
+This project is based on the programming exercise *Building a multithreaded web server* from the book *The Rust Programming Language* (*no starch press 2018*) and inspired by the *Aomebo Web Framework for PHP*.
 
 ## Major goal
 * Easy to make any kind of website with it
-* Website are scaleable, fast and robust
+* Websites are scaleable, fast and robust
 
 ## Goals
-* Concurrent TCP-server with integrated HTTP application framework and potential support for other transport-protocols.
+* Concurrent TCP-server with integrated web application framework and potential support for other application layer protocols.
 * Easy to customize for any kind of application
 * Fast
 * Scaleable
@@ -17,7 +17,8 @@ This project is based on the programming exercise *Building a multithreaded web 
 
 ## Development
 
-* Use `rust-fmt`, an Emacs hook is included via DirectoryVariables.
+* Use `rust-fmt` on all rust files
+* Use `cargo check` and `cargo test` to ensure validity
 
 ## Run local server
 
@@ -26,7 +27,7 @@ This project is based on the programming exercise *Building a multithreaded web 
 **Parameters are:**
 * Hostname
 * Port
-* Worker limit
+* Limit of workers
 * Directory index file
 * HTTP web-server file-system root
 * File not found file
@@ -36,4 +37,5 @@ This project is based on the programming exercise *Building a multithreaded web 
 `cargo test`
 
 ## License
+
 This project is under the **GPLv3** license
