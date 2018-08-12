@@ -27,6 +27,11 @@ impl Responder {
 impl Type<Responder> for Responder {
     fn matches(&mut self, request: &[u8], config: &Config) -> bool {
         if let Some(request_message) = http::request::Message::from_tcp_stream(request) {
+
+            let mut request_filename = request_message.request_line.request_uri_base.clone();
+            request_filename = format!("{}{}", &config.filesystem_root, &request_filename);
+            let request_exists = Path::new(&request_filename).exists();
+            
             let filename = format!("{}{}", &config.filesystem_root, &config.file_not_found_file);
             let exists = Path::new(&filename).exists();
             let mut is_dir = false;
@@ -36,7 +41,7 @@ impl Type<Responder> for Responder {
             self.filename = Some(filename);
             self.request_message = Some(request_message);
 
-            return exists && !is_dir;
+            return !request_exists && exists && !is_dir;
         } else {
             eprintln!("Failed to get HTTP request from TCP stream");
         }
@@ -110,5 +115,74 @@ impl Type<Responder> for Responder {
         } else {
             return Err("Error: Filename missing".to_string());
         }
+    }
+}
+
+#[cfg(test)]
+mod file_not_found_test {
+    use super::*;
+    #[test]
+    fn matches() {
+        let config = Config {
+            filesystem_directory_index: "index.htm".to_string(),
+            file_not_found_file: "404.htm".to_string(),
+            filesystem_root: "./html/".to_string(),
+            server_host: "localhost".to_string(),
+            server_limit: 4,
+            server_port: 4040,
+        };
+        let mut responder = Responder::new();
+        assert!(responder.matches(b"GET /index2.htm HTTP/1.0", &config));
+        assert!(responder.matches(b"GET /index3.htm HTTP/1.0", &config));
+        assert!(!responder.matches(b"GET /index.htm HTTP/1.1", &config));
+    }
+
+    #[test]
+    fn respond() {
+        let config = Config {
+            filesystem_directory_index: "index.htm".to_string(),
+            file_not_found_file: "404.htm".to_string(),
+            filesystem_root: "./html/".to_string(),
+            server_host: "localhost".to_string(),
+            server_limit: 4,
+            server_port: 4040,
+        };
+        let mut responder = Responder::new();
+
+        let filename = "html/404.htm";
+
+        let mut file = File::open(&filename).unwrap();
+
+        // Build response body
+        let mut response_body = String::new();
+
+        file.read_to_string(&mut response_body).unwrap();
+
+        let request = b"GET /index2.htm HTTP/1.1\r\n\r\n";
+
+        let matches = responder.matches(request, &config);
+        assert!(matches);
+
+        let mut headers: HashMap<String, String> = HashMap::new();
+        if let Ok(metadata) = fs::metadata(&filename) {
+            if let Ok(last_modified) = metadata.modified() {
+                headers.insert(
+                    "Last-Modified".to_string(),
+                    filesystem::Responder::get_metadata_modified_as_rfc7231(last_modified),
+                );
+            }
+            headers.insert("Content-Length".to_string(), metadata.len().to_string());
+        }
+        headers.insert("Content-Type".to_string(), mime::from_filename(&filename));
+
+        let expected_response = http::response::Message::new(
+            "HTTP/1.1".to_string(),
+            "404 File Not Found".to_string(),
+            headers,
+            response_body,
+        ).to_string();
+
+        let given_response = responder.respond(request, &config).unwrap();
+        assert_eq!(expected_response, given_response);
     }
 }
