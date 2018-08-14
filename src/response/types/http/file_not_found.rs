@@ -124,9 +124,9 @@ mod file_not_found_test {
             server_port: 4040,
         };
         let mut responder = Responder::new();
-        assert!(responder.matches(b"GET /index2.htm HTTP/1.0", &config));
-        assert!(responder.matches(b"GET /index3.htm HTTP/1.0", &config));
-        assert!(!responder.matches(b"GET /index.htm HTTP/1.1", &config));
+        assert!(responder.matches(&http::request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.0").unwrap(), &config));
+        assert!(responder.matches(&http::request::Message::from_tcp_stream(b"GET /index3.htm HTTP/1.0").unwrap(), &config));
+        assert!(!responder.matches(&http::request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.1").unwrap(), &config));
     }
 
     #[test]
@@ -150,9 +150,9 @@ mod file_not_found_test {
 
         file.read_to_string(&mut response_body).unwrap();
 
-        let request = b"GET /index2.htm HTTP/1.1\r\n\r\n";
+        let request = http::request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.1\r\n\r\n").unwrap();
 
-        let matches = responder.matches(request, &config);
+        let matches = responder.matches(&request, &config);
         assert!(matches);
 
         let mut headers: HashMap<String, String> = HashMap::new();
@@ -174,7 +174,7 @@ mod file_not_found_test {
             response_body.into_bytes(),
         ).to_bytes();
 
-        let given_response = responder.respond().unwrap();
+        let given_response = responder.respond(&request).unwrap();
         assert_eq!(expected_response, given_response);
     }
 }
