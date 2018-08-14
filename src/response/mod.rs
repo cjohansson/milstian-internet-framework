@@ -4,8 +4,7 @@ use std::io::prelude::*;
 use std::net::TcpStream;
 use std::str;
 
-use self::types::http::file_not_found;
-use self::types::http::filesystem;
+use self::types::http;
 use Config;
 
 // This struct should handle the dispatching of requests to a specific response type
@@ -16,25 +15,20 @@ impl Dispatcher {
     pub fn dispatch_request(mut stream: TcpStream, config: Config) {
         // Create a array with 512 elements containing the value 0
         let mut buffer = [0; 512];
+        // TODO Make size dynamic
 
         if let Ok(_) = stream.read(&mut buffer) {
             let mut response = Vec::new();
-            let mut filesystem = filesystem::Responder::new();
-            let mut file_not_found = file_not_found::Responder::new();
 
-            if filesystem.matches(&buffer, &config) {
-                match filesystem.respond(&buffer, &config) {
-                    Ok(filesystem_response) => { response = filesystem_response; },
-                    Err(error) => { eprintln!("Filesystem error: {}", error); }
-                }
-            } else if file_not_found.matches(&buffer, &config) {
-                match file_not_found.respond(&buffer, &config) {
-                    Ok(file_not_found_response) => { response = file_not_found_response; }
-                    Err(error) => { eprintln!("File Not Found error: {}", error); }
+            let mut http_dispatcher = http::Dispatcher::new();
+
+            if http_dispatcher.matches(&buffer, &config) {
+                match http_dispatcher.respond(&buffer, &config) {
+                    Ok(http_response) => { response = http_response; }
+                    Err(error) => { eprintln!("Got empty HTTP response! Error: {}", error); }
                 }
             }
-
-            // TODO Add more http response types here: not found, page, ajax, invalid request
+            // TODO Add more application layer protocols here
 
             if !response.is_empty() {
                 // Flush HTTP response

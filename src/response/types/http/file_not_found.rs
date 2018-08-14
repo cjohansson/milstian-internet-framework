@@ -5,53 +5,42 @@ use std::io::prelude::*;
 use std::path::Path;
 
 use application_layer_protocol::http;
+use application_layer_protocol::http::request::Message;
 use mime;
 use response::types::http::filesystem;
-use response::Type;
 use Config;
 
 pub struct Responder {
     pub filename: Option<String>,
-    pub request_message: Option<http::request::Message>,
 }
 
-impl Responder {
+impl<'a> Responder {
     pub fn new() -> Responder {
         Responder {
             filename: None,
-            request_message: None,
         }
     }
-}
 
-impl Type<Responder> for Responder {
-    fn matches(&mut self, request: &[u8], config: &Config) -> bool {
-        // TODO Should only do this once
-        if let Some(request_message) = http::request::Message::from_tcp_stream(request) {
+    pub fn matches(&mut self, request_message: &Message, config: &Config) -> bool {
 
-            let mut request_filename = request_message.request_line.request_uri_base.clone();
-            request_filename = format!("{}{}", &config.filesystem_root, &request_filename);
-            let request_exists = Path::new(&request_filename).exists();
-            
-            let filename = format!("{}/{}", &config.filesystem_root, &config.file_not_found_file);
-            let exists = Path::new(&filename).exists();
-            let mut is_dir = false;
-            if exists {
-                is_dir = Path::new(&filename).is_dir();
-            } else {
-                eprintln!("File not found file does not exists {}", &filename);
-            }
-            self.filename = Some(filename);
-            self.request_message = Some(request_message);
-
-            return !request_exists && exists && !is_dir;
+        let mut request_filename = request_message.request_line.request_uri_base.clone();
+        request_filename = format!("{}{}", &config.filesystem_root, &request_filename);
+        let request_exists = Path::new(&request_filename).exists();
+        
+        let filename = format!("{}/{}", &config.filesystem_root, &config.file_not_found_file);
+        let exists = Path::new(&filename).exists();
+        let mut is_dir = false;
+        if exists {
+            is_dir = Path::new(&filename).is_dir();
         } else {
-            eprintln!("Failed to get HTTP request from TCP stream");
+            eprintln!("File not found file does not exists {}", &filename);
         }
-        false
+        self.filename = Some(filename);
+
+        return !request_exists && exists && !is_dir;
     }
 
-    fn respond(&self, _request: &[u8], _config: &Config) -> Result<Vec<u8>, String> {
+    pub fn respond(&self, request_message: &Message) -> Result<Vec<u8>, String> {
         let mut response_body = Vec::new();
 
         // Does filename exist?
@@ -66,7 +55,7 @@ impl Type<Responder> for Responder {
                             let mut status_code = "404 File Not Found";
 
                             let protocol = http::request::Message::get_protocol_text(
-                                &self.request_message.as_ref().unwrap().request_line.protocol,
+                                &request_message.request_line.protocol,
                             );
                             let mut headers: HashMap<String, String> = HashMap::new();
 
@@ -185,7 +174,7 @@ mod file_not_found_test {
             response_body.into_bytes(),
         ).to_bytes();
 
-        let given_response = responder.respond(request, &config).unwrap();
+        let given_response = responder.respond().unwrap();
         assert_eq!(expected_response, given_response);
     }
 }

@@ -9,13 +9,12 @@ use chrono::offset::Utc;
 use chrono::DateTime;
 
 use application_layer_protocol::http;
+use application_layer_protocol::http::request::Message;
 use mime;
-use response::Type;
 use Config;
 
 pub struct Responder {
     pub filename: Option<String>,
-    pub request_message: Option<http::request::Message>,
 }
 
 impl Responder {
@@ -27,46 +26,37 @@ impl Responder {
     pub fn new() -> Responder {
         Responder {
             filename: None,
-            request_message: None,
         }
     }
-}
-
-impl Type<Responder> for Responder {
-    fn matches(&mut self, request: &[u8], config: &Config) -> bool {
-        if let Some(request_message) = http::request::Message::from_tcp_stream(request) {
-            let mut filename = request_message.request_line.request_uri_base.clone();
-            filename = format!("{}{}", &config.filesystem_root, &filename);
-            let mut exists = Path::new(&filename).exists();
-            let mut is_dir = false;
-            if exists {
-                is_dir = Path::new(&filename).is_dir();
-                if is_dir {
-                    filename = format!("{}{}", &filename, &config.filesystem_directory_index);
-                    exists = Path::new(&filename).exists();
-                    is_dir = Path::new(&filename).is_dir()
-                }
-            }
-            if !exists {
-                eprintln!("File does not exists {}", &filename);
-            }
+    
+    pub fn matches(&mut self, request_message: &Message, config: &Config) -> bool {
+        let mut filename = request_message.request_line.request_uri_base.clone();
+        filename = format!("{}{}", &config.filesystem_root, &filename);
+        let mut exists = Path::new(&filename).exists();
+        let mut is_dir = false;
+        if exists {
+            is_dir = Path::new(&filename).is_dir();
             if is_dir {
-                eprintln!("File is a directory {}", &filename);
+                filename = format!("{}{}", &filename, &config.filesystem_directory_index);
+                exists = Path::new(&filename).exists();
+                is_dir = Path::new(&filename).is_dir()
             }
-
-            // TODO Need to check that the canonical filename is below the canonical root
-
-            self.request_message = Some(request_message);
-            self.filename = Some(filename);
-            return exists && !is_dir;
-        } else {
-            eprintln!("Failed to get HTTP request from TCP stream");
         }
-        false
+        if !exists {
+            eprintln!("File does not exists {}", &filename);
+        }
+        if is_dir {
+            eprintln!("File is a directory {}", &filename);
+        }
+
+        // TODO Need to check that the canonical filename is below the canonical root
+
+        self.filename = Some(filename);
+        return exists && !is_dir;
     }
 
     // Make this respond headers as a HashMap and a string for body
-    fn respond(&self, _request: &[u8], _config: &Config) -> Result<Vec<u8>, String> {
+    pub fn respond(&self, request_message: &Message) -> Result<Vec<u8>, String> {
         let mut response_body = Vec::new();
 
         // Does filename exist?
@@ -81,7 +71,7 @@ impl Type<Responder> for Responder {
                             let mut status_code = "200 OK";
 
                             let protocol = http::request::Message::get_protocol_text(
-                                &self.request_message.as_ref().unwrap().request_line.protocol,
+                                &request_message.request_line.protocol,
                             );
                             let mut headers: HashMap<String, String> = HashMap::new();
 
@@ -198,7 +188,7 @@ mod filesystem_test {
             response_body.into_bytes(),
         ).to_bytes();
 
-        let given_response = responder.respond(request, &config).unwrap();
+        let given_response = responder.respond().unwrap();
         assert_eq!(expected_response, given_response);
     }
 }
