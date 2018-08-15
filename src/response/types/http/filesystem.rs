@@ -56,68 +56,75 @@ impl Responder {
     }
 
     // Make this respond headers as a HashMap and a string for body
-    pub fn respond(&self, request_message: &Message) -> Result<Vec<u8>, String> {
+    pub fn get_response(filename: &String, request_message: &Message) -> Result<http::response::Message, String> {
         let mut response_body = Vec::new();
 
-        // Does filename exist?
-        if let Some(filename) = &self.filename {
-            // Try to open the file
-            let file = File::open(filename);
-            match file {
-                Ok(mut file) => {
-                    // Try to read the file
-                    match file.read_to_end(&mut response_body) {
-                        Ok(_) => {
-                            let mut status_code = "200 OK";
+        // Try to open the file
+        let file = File::open(filename);
+        match file {
+            Ok(mut file) => {
+                // Try to read the file
+                match file.read_to_end(&mut response_body) {
+                    Ok(_) => {
+                        let mut status_code = "200 OK";
 
-                            let protocol = http::request::Message::get_protocol_text(
-                                &request_message.request_line.protocol,
+                        let protocol = http::request::Message::get_protocol_text(
+                            &request_message.request_line.protocol,
+                        );
+                        let mut headers: HashMap<String, String> = HashMap::new();
+
+                        headers
+                            .insert("Content-Type".to_string(), mime::from_filename(&filename));
+
+                        if let Ok(metadata) = fs::metadata(&filename) {
+                            headers.insert(
+                                "Content-Length".to_string(),
+                                metadata.len().to_string(),
                             );
-                            let mut headers: HashMap<String, String> = HashMap::new();
 
-                            headers
-                                .insert("Content-Type".to_string(), mime::from_filename(&filename));
-
-                            if let Ok(metadata) = fs::metadata(&filename) {
+                            if let Ok(last_modified) = metadata.modified() {
                                 headers.insert(
-                                    "Content-Length".to_string(),
-                                    metadata.len().to_string(),
+                                    "Last-Modified".to_string(),
+                                    Responder::get_metadata_modified_as_rfc7231(last_modified),
                                 );
 
-                                if let Ok(last_modified) = metadata.modified() {
-                                    headers.insert(
-                                        "Last-Modified".to_string(),
-                                        Responder::get_metadata_modified_as_rfc7231(last_modified),
-                                    );
-
-                                    // TODO Add Expires, Etag and Cache-Control here
-                                    // TODO Support If-Modified-Since and If-None-Match here
-                                }
+                                // TODO Add Expires, Etag and Cache-Control here
+                                // TODO Support If-Modified-Since and If-None-Match here
                             }
+                        }
 
-                            // Build HTTP response
-                            return Ok(http::response::Message::new(
-                                protocol.to_string(),
-                                status_code.to_string(),
-                                headers,
-                                response_body,
-                            ).to_bytes());
-                        }
-                        Err(e) => {
-                            return Err(format!(
-                                "Error: Failed to read file {}, error: {:?}",
-                                filename, e
-                            ));
-                        }
+                        // Build HTTP response
+                        return Ok(http::response::Message::new(
+                            protocol.to_string(),
+                            status_code.to_string(),
+                            headers,
+                            response_body,
+                        ));
+                    }
+                    Err(e) => {
+                        return Err(format!(
+                            "Error: Failed to read file {}, error: {:?}",
+                            filename, e
+                        ));
                     }
                 }
-                Err(e) => {
-                    return Err(format!(
-                        "Error: Failed to open file {}, error: {:?}",
-                        filename, e
-                    ));
-                }
             }
+            Err(e) => {
+                return Err(format!(
+                    "Error: Failed to open file {}, error: {:?}",
+                    filename, e
+                ));
+            }
+        }
+    }
+
+    // Make this respond headers as a HashMap and a string for body
+    pub fn respond(&self, request_message: &Message) -> Result<Vec<u8>, String> {
+        // Does filename exist?
+        if let Some(filename) = &self.filename {
+            let mut response = Responder::get_response(&filename, &request_message)?;
+            // Build HTTP response
+            return Ok(response.to_bytes());
         } else {
             return Err("Error: Filename missing".to_string());
         }

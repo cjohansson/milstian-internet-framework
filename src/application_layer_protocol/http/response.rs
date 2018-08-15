@@ -3,7 +3,7 @@ use std::str;
 
 pub struct Message {
     protocol: String,
-    status: String,
+    pub status: String,
     headers: HashMap<String, String>,
     body: Vec<u8>
 }

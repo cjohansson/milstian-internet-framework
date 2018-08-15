@@ -14,7 +14,7 @@ pub struct Responder {
     pub filename: Option<String>,
 }
 
-impl<'a> Responder {
+impl Responder {
     pub fn new() -> Responder {
         Responder {
             filename: None,
@@ -41,69 +41,11 @@ impl<'a> Responder {
     }
 
     pub fn respond(&self, request_message: &Message) -> Result<Vec<u8>, String> {
-        let mut response_body = Vec::new();
-
         // Does filename exist?
         if let Some(filename) = &self.filename {
-            // Try to open the file
-            let file = File::open(filename);
-            match file {
-                Ok(mut file) => {
-                    // Try to read the file
-                    match file.read_to_end(&mut response_body) {
-                        Ok(_) => {
-                            let mut status_code = "404 File Not Found";
-
-                            let protocol = http::request::Message::get_protocol_text(
-                                &request_message.request_line.protocol,
-                            );
-                            let mut headers: HashMap<String, String> = HashMap::new();
-
-                            headers
-                                .insert("Content-Type".to_string(), mime::from_filename(&filename));
-
-                            if let Ok(metadata) = fs::metadata(&filename) {
-                                headers.insert(
-                                    "Content-Length".to_string(),
-                                    metadata.len().to_string(),
-                                );
-
-                                if let Ok(last_modified) = metadata.modified() {
-                                    headers.insert(
-                                        "Last-Modified".to_string(),
-                                        filesystem::Responder::get_metadata_modified_as_rfc7231(
-                                            last_modified,
-                                        ),
-                                    );
-
-                                    // TODO Add Expires, Etag and Cache-Control here
-                                    // TODO Support If-Modified-Since and If-None-Match here
-                                }
-                            }
-
-                            // Build HTTP response
-                            return Ok(http::response::Message::new(
-                                protocol.to_string(),
-                                status_code.to_string(),
-                                headers,
-                                response_body,
-                            ).to_bytes());
-                        }
-                        Err(e) => {
-                            return Err(format!(
-                                "Error: Failed to read file {}, error: {:?}",
-                                filename, e
-                            ));
-                        }
-                    }
-                }
-                Err(e) => {
-                    return Err(format!(
-                        "Error: Failed to open file {}, error: {:?}",
-                        filename, e
-                    ));
-                }
-            }
+            let mut response = filesystem::Responder::get_response(filename, &request_message)?;
+            response.status = "404 File Not Found".to_string();
+            return Ok(response.to_bytes());
         } else {
             return Err("Error: Filename missing".to_string());
         }
