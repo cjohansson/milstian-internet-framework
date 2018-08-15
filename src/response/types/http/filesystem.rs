@@ -1,8 +1,11 @@
+extern crate chrono;
+
 use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
+use std::path::PathBuf;
 use std::time::SystemTime;
 
 use chrono::offset::Utc;
@@ -32,26 +35,43 @@ impl Responder {
     pub fn matches(&mut self, request_message: &Message, config: &Config) -> bool {
         let mut filename = request_message.request_line.request_uri_base.clone();
         filename = format!("{}{}", &config.filesystem_root, &filename);
-        let mut exists = Path::new(&filename).exists();
+        let temp_filename = PathBuf::from(&filename);
+        let mut exists = false;
         let mut is_dir = false;
-        if exists {
-            is_dir = Path::new(&filename).is_dir();
-            if is_dir {
-                filename = format!("{}{}", &filename, &config.filesystem_directory_index);
-                exists = Path::new(&filename).exists();
-                is_dir = Path::new(&filename).is_dir()
+        match fs::canonicalize(&temp_filename) {
+            Ok(canonical_filename) => {
+                match canonical_filename.to_str() {
+                    Some(canonical_filename_string) => {
+                        let mut filename = canonical_filename_string.to_string();
+                        // TODO Need to check that the canonical filename is below the canonical root
+
+                        exists = Path::new(&filename).exists();
+                        if exists {
+                            is_dir = Path::new(&filename).is_dir();
+                            if is_dir {
+                                filename = format!("{}/{}", &filename, &config.filesystem_directory_index);
+                                exists = Path::new(&filename).exists();
+                                is_dir = Path::new(&filename).is_dir()
+                            }
+                        }
+                        if !exists {
+                            eprintln!("File does not exists {}", &filename);
+                        }
+                        if is_dir {
+                            eprintln!("File is a directory {}", &filename);
+                        }
+
+                        self.filename = Some(filename);
+                    },
+                    None => {
+                        eprintln!("Failed to get canonical path string from {:?}", &canonical_filename);
+                    }
+                }
+            },
+            Err(error) => {
+                eprintln!("Failed to get canonical path to {:?}, error: {}", &temp_filename, error);
             }
         }
-        if !exists {
-            eprintln!("File does not exists {}", &filename);
-        }
-        if is_dir {
-            eprintln!("File is a directory {}", &filename);
-        }
-
-        // TODO Need to check that the canonical filename is below the canonical root
-
-        self.filename = Some(filename);
         return exists && !is_dir;
     }
 
