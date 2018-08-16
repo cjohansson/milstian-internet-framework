@@ -41,28 +41,45 @@ impl Responder {
                 match canonical_filename.to_str() {
                     Some(canonical_filename_string) => {
                         let mut filename = canonical_filename_string.to_string();
+
                         // Is the file inside file-system root?
                         if filename.starts_with(&config.filesystem_root) {
-                            exists = Path::new(&filename).exists();
-                            if exists {
-                                is_dir = Path::new(&filename).is_dir();
-                                if is_dir {
-                                    filename = format!(
-                                        "{}/{}",
-                                        &filename, &config.filesystem_directory_index
-                                    );
-                                    exists = Path::new(&filename).exists();
-                                    is_dir = Path::new(&filename).is_dir()
-                                }
-                            }
-                            if !exists {
-                                eprintln!("File does not exists {}", &filename);
-                            }
-                            if is_dir {
-                                eprintln!("File is a directory {}", &filename);
-                            }
 
-                            self.filename = Some(filename);
+                            let filename_copy = filename.clone();
+                            let splits: Vec<&str> = filename_copy.rsplitn(2, '/').collect();
+                            if let Some(basename) = splits.get(0) {
+
+                                // Does base-name not start with dot?
+                                if !basename.starts_with(&".".to_string()) {
+                                    exists = Path::new(&filename).exists();
+                                    if exists {
+                                        is_dir = Path::new(&filename).is_dir();
+                                        if is_dir {
+                                            filename = format!(
+                                                "{}/{}",
+                                                &filename, &config.filesystem_directory_index
+                                            );
+                                            exists = Path::new(&filename).exists();
+                                            is_dir = Path::new(&filename).is_dir()
+                                        }
+                                    }
+                                    if !exists {
+                                        eprintln!("File does not exists {}", &filename);
+                                    }
+                                    if is_dir {
+                                        eprintln!("File is a directory {}", &filename);
+                                    }
+
+                                    self.filename = Some(filename);
+                                } else {
+                                    eprintln!(
+                                        "Filename {} starts with a dot!",
+                                        &filename
+                                    );
+                                }
+                            } else {
+                                eprintln!("Failed to find file base-name {}", &filename);
+                            }
                         } else {
                             eprintln!(
                                 "File {} is outside of file-system root {}",
@@ -190,6 +207,10 @@ mod filesystem_test {
         ));
         assert!(!responder.matches(
             &http::request::Message::from_tcp_stream(b"GET /../README.md HTTP/1.0").unwrap(),
+            &config
+        ));
+        assert!(!responder.matches(
+            &http::request::Message::from_tcp_stream(b"GET /.DS_Store HTTP/1.0").unwrap(),
             &config
         ));
         assert!(!responder.matches(

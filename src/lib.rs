@@ -2,13 +2,13 @@ extern crate chrono;
 
 use std::env;
 use std::fs;
-use std::path::PathBuf;
 use std::net::TcpListener;
+use std::path::PathBuf;
 
+mod application_layer_protocol;
 mod mime;
 mod response;
 mod thread;
-mod application_layer_protocol;
 
 use response::Dispatcher;
 use thread::Pool;
@@ -30,14 +30,21 @@ impl Config {
     pub fn get_canonical_root(root_path: String) -> Result<String, String> {
         let root_path = PathBuf::from(&root_path);
         match fs::canonicalize(&root_path) {
-            Ok(canonical_root) =>  {
+            Ok(canonical_root) => {
                 if let Some(canonical_root) = canonical_root.to_str() {
                     return Ok(canonical_root.to_string());
                 } else {
-                    return Err(format!("Failed to convert canonical root to string {:?}", canonical_root));
+                    return Err(format!(
+                        "Failed to convert canonical root to string {:?}",
+                        canonical_root
+                    ));
                 }
-            },
-            Err(error) => { return Err(format!("Could not find canonical path from: {:?}, error: {}", &root_path, &error));
+            }
+            Err(error) => {
+                return Err(format!(
+                    "Could not find canonical path from: {:?}, error: {}",
+                    &root_path, &error
+                ));
             }
         }
     }
