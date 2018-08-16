@@ -199,7 +199,7 @@ impl Message {
                 __ => Method::Invalid,
             };
 
-            let request_uri = parts.get(1)?.to_string();
+            let request_uri = parts.get(1)?.trim().to_string();
             let request_uri_copy = request_uri.clone();
             let mut request_uri_base = request_uri.clone();
             let mut query_string = String::new();
