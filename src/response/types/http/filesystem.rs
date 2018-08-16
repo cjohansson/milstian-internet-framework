@@ -11,8 +11,8 @@ use std::time::SystemTime;
 use chrono::offset::Utc;
 use chrono::DateTime;
 
-use application_layer_protocol::http;
-use application_layer_protocol::http::request::Message;
+use application_layer_protocol::http::request;
+use application_layer_protocol::http::response;
 use mime;
 use Config;
 
@@ -30,11 +30,13 @@ impl Responder {
         Responder { filename: None }
     }
 
-    pub fn get_matching_filename(request_message: &Message, config: &Config) -> Option<String> {
+    pub fn get_matching_filename(
+        request_message: &request::Message,
+        config: &Config,
+    ) -> Option<String> {
         let mut filename = request_message.request_line.request_uri_base.clone();
         filename = format!("{}{}", &config.filesystem_root, &filename);
         let temp_filename = PathBuf::from(&filename);
-        let mut exists = false;
         let mut is_dir = false;
         match fs::canonicalize(&temp_filename) {
             Ok(canonical_filename) => {
@@ -49,7 +51,7 @@ impl Responder {
                             if let Some(basename) = splits.get(0) {
                                 // Does base-name not start with dot?
                                 if !basename.starts_with(&".".to_string()) {
-                                    exists = Path::new(&filename).exists();
+                                    let mut exists = Path::new(&filename).exists();
                                     if exists {
                                         is_dir = Path::new(&filename).is_dir();
                                         if is_dir {
@@ -68,7 +70,9 @@ impl Responder {
                                         eprintln!("File is a directory {}", &filename);
                                     }
 
-                                    return Some(filename);
+                                    if exists && !is_dir {
+                                        return Some(filename);
+                                    }
                                 } else {
                                     eprintln!("Filename {} starts with a dot!", &filename);
                                 }
@@ -100,7 +104,7 @@ impl Responder {
         return None;
     }
 
-    pub fn matches(&mut self, request_message: &Message, config: &Config) -> bool {
+    pub fn matches(&mut self, request_message: &request::Message, config: &Config) -> bool {
         if let Some(filename) = Responder::get_matching_filename(&request_message, &config) {
             self.filename = Some(filename);
             return true;
@@ -111,8 +115,8 @@ impl Responder {
     // Make this respond headers as a HashMap and a string for body
     pub fn get_response(
         filename: &String,
-        request_message: &Message,
-    ) -> Result<http::response::Message, String> {
+        request_message: &request::Message,
+    ) -> Result<response::Message, String> {
         let mut response_body = Vec::new();
 
         // Try to open the file
@@ -124,7 +128,7 @@ impl Responder {
                     Ok(_) => {
                         let mut status_code = "200 OK";
 
-                        let protocol = http::request::Message::get_protocol_text(
+                        let protocol = request::Message::get_protocol_text(
                             &request_message.request_line.protocol,
                         );
                         let mut headers: HashMap<String, String> = HashMap::new();
@@ -147,7 +151,7 @@ impl Responder {
                         }
 
                         // Build HTTP response
-                        return Ok(http::response::Message::new(
+                        return Ok(response::Message::new(
                             protocol.to_string(),
                             status_code.to_string(),
                             headers,
@@ -172,7 +176,7 @@ impl Responder {
     }
 
     // Make this respond headers as a HashMap and a string for body
-    pub fn respond(&self, request_message: &Message) -> Result<Vec<u8>, String> {
+    pub fn respond(&self, request_message: &request::Message) -> Result<Vec<u8>, String> {
         // Does filename exist?
         if let Some(filename) = &self.filename {
             let mut response = Responder::get_response(&filename, &request_message)?;
@@ -200,23 +204,23 @@ mod filesystem_test {
 
         let mut responder = Responder::new();
         assert!(responder.matches(
-            &http::request::Message::from_tcp_stream(b"GET / HTTP/1.0").unwrap(),
+            &request::Message::from_tcp_stream(b"GET / HTTP/1.0").unwrap(),
             &config
         ));
         assert!(responder.matches(
-            &http::request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.0").unwrap(),
+            &request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.0").unwrap(),
             &config
         ));
         assert!(!responder.matches(
-            &http::request::Message::from_tcp_stream(b"GET /../README.md HTTP/1.0").unwrap(),
+            &request::Message::from_tcp_stream(b"GET /../README.md HTTP/1.0").unwrap(),
             &config
         ));
         assert!(!responder.matches(
-            &http::request::Message::from_tcp_stream(b"GET /.DS_Store HTTP/1.0").unwrap(),
+            &request::Message::from_tcp_stream(b"GET /.DS_Store HTTP/1.0").unwrap(),
             &config
         ));
         assert!(!responder.matches(
-            &http::request::Message::from_tcp_stream(b"GET /test.htm HTTP/1.1").unwrap(),
+            &request::Message::from_tcp_stream(b"GET /test.htm HTTP/1.1").unwrap(),
             &config
         ));
     }
@@ -242,7 +246,7 @@ mod filesystem_test {
 
         file.read_to_string(&mut response_body).unwrap();
 
-        let request = http::request::Message::from_tcp_stream(b"GET / HTTP/1.1\r\n\r\n").unwrap();
+        let request = request::Message::from_tcp_stream(b"GET / HTTP/1.1\r\n\r\n").unwrap();
 
         let matches = responder.matches(&request, &config);
         assert!(matches);
@@ -259,7 +263,7 @@ mod filesystem_test {
         }
         headers.insert("Content-Type".to_string(), mime::from_filename(&filename));
 
-        let expected_response = http::response::Message::new(
+        let expected_response = response::Message::new(
             "HTTP/1.1".to_string(),
             "200 OK".to_string(),
             headers,
