@@ -4,8 +4,8 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 
-use application_layer_protocol::http;
-use application_layer_protocol::http::request::Message;
+use application_layer_protocol::http::request;
+use application_layer_protocol::http::response;
 use mime;
 use response::types::http::filesystem;
 use Config;
@@ -19,7 +19,7 @@ impl Responder {
         Responder { filename: None }
     }
 
-    pub fn matches(&mut self, request_message: &Message, config: &Config) -> bool {
+    pub fn matches(&mut self, request_message: &request::Message, config: &Config) -> bool {
         if let None = filesystem::Responder::get_matching_filename(&request_message, &config) {
             let filename = format!(
                 "{}/{}",
@@ -38,7 +38,7 @@ impl Responder {
         return false;
     }
 
-    pub fn respond(&self, request_message: &Message) -> Result<Vec<u8>, String> {
+    pub fn respond(&self, request_message: &request::Message) -> Result<Vec<u8>, String> {
         // Does filename exist?
         if let Some(filename) = &self.filename {
             let mut response = filesystem::Responder::get_response(filename, &request_message)?;
@@ -65,15 +65,15 @@ mod file_not_found_test {
         };
         let mut responder = Responder::new();
         assert!(responder.matches(
-            &http::request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.0").unwrap(),
+            &request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.0").unwrap(),
             &config
         ));
         assert!(responder.matches(
-            &http::request::Message::from_tcp_stream(b"GET /index3.htm HTTP/1.0").unwrap(),
+            &request::Message::from_tcp_stream(b"GET /index3.htm HTTP/1.0").unwrap(),
             &config
         ));
         assert!(!responder.matches(
-            &http::request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.1").unwrap(),
+            &request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.1").unwrap(),
             &config
         ));
     }
@@ -100,7 +100,7 @@ mod file_not_found_test {
         file.read_to_string(&mut response_body).unwrap();
 
         let request =
-            http::request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.1\r\n\r\n").unwrap();
+            request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.1\r\n\r\n").unwrap();
 
         let matches = responder.matches(&request, &config);
         assert!(matches);
@@ -117,7 +117,7 @@ mod file_not_found_test {
         }
         headers.insert("Content-Type".to_string(), mime::from_filename(&filename));
 
-        let expected_response = http::response::Message::new(
+        let expected_response = response::Message::new(
             "HTTP/1.1".to_string(),
             "404 File Not Found".to_string(),
             headers,
