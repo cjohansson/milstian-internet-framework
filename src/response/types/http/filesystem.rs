@@ -27,11 +27,9 @@ impl Responder {
     }
 
     pub fn new() -> Responder {
-        Responder {
-            filename: None,
-        }
+        Responder { filename: None }
     }
-    
+
     pub fn matches(&mut self, request_message: &Message, config: &Config) -> bool {
         let mut filename = request_message.request_line.request_uri_base.clone();
         filename = format!("{}{}", &config.filesystem_root, &filename);
@@ -43,40 +41,59 @@ impl Responder {
                 match canonical_filename.to_str() {
                     Some(canonical_filename_string) => {
                         let mut filename = canonical_filename_string.to_string();
-                        // TODO Need to check that the canonical filename is below the canonical root
-
-                        exists = Path::new(&filename).exists();
-                        if exists {
-                            is_dir = Path::new(&filename).is_dir();
-                            if is_dir {
-                                filename = format!("{}/{}", &filename, &config.filesystem_directory_index);
-                                exists = Path::new(&filename).exists();
-                                is_dir = Path::new(&filename).is_dir()
+                        // Is the file inside file-system root?
+                        if filename.starts_with(&config.filesystem_root) {
+                            exists = Path::new(&filename).exists();
+                            if exists {
+                                is_dir = Path::new(&filename).is_dir();
+                                if is_dir {
+                                    filename = format!(
+                                        "{}/{}",
+                                        &filename, &config.filesystem_directory_index
+                                    );
+                                    exists = Path::new(&filename).exists();
+                                    is_dir = Path::new(&filename).is_dir()
+                                }
                             }
-                        }
-                        if !exists {
-                            eprintln!("File does not exists {}", &filename);
-                        }
-                        if is_dir {
-                            eprintln!("File is a directory {}", &filename);
-                        }
+                            if !exists {
+                                eprintln!("File does not exists {}", &filename);
+                            }
+                            if is_dir {
+                                eprintln!("File is a directory {}", &filename);
+                            }
 
-                        self.filename = Some(filename);
-                    },
+                            self.filename = Some(filename);
+                        } else {
+                            eprintln!(
+                                "File {} is outside of file-system root {}",
+                                &filename,
+                                &config.filesystem_root
+                            );
+                        }
+                    }
                     None => {
-                        eprintln!("Failed to get canonical path string from {:?}", &canonical_filename);
+                        eprintln!(
+                            "Failed to get canonical path string from {:?}",
+                            &canonical_filename
+                        );
                     }
                 }
-            },
+            }
             Err(error) => {
-                eprintln!("Failed to get canonical path to {:?}, error: {}", &temp_filename, error);
+                eprintln!(
+                    "Failed to get canonical path to {:?}, error: {}",
+                    &temp_filename, error
+                );
             }
         }
         return exists && !is_dir;
     }
 
     // Make this respond headers as a HashMap and a string for body
-    pub fn get_response(filename: &String, request_message: &Message) -> Result<http::response::Message, String> {
+    pub fn get_response(
+        filename: &String,
+        request_message: &Message,
+    ) -> Result<http::response::Message, String> {
         let mut response_body = Vec::new();
 
         // Try to open the file
@@ -93,14 +110,11 @@ impl Responder {
                         );
                         let mut headers: HashMap<String, String> = HashMap::new();
 
-                        headers
-                            .insert("Content-Type".to_string(), mime::from_filename(&filename));
+                        headers.insert("Content-Type".to_string(), mime::from_filename(&filename));
 
                         if let Ok(metadata) = fs::metadata(&filename) {
-                            headers.insert(
-                                "Content-Length".to_string(),
-                                metadata.len().to_string(),
-                            );
+                            headers
+                                .insert("Content-Length".to_string(), metadata.len().to_string());
 
                             if let Ok(last_modified) = metadata.modified() {
                                 headers.insert(
@@ -159,16 +173,29 @@ mod filesystem_test {
         let config = Config {
             filesystem_directory_index: "index.htm".to_string(),
             file_not_found_file: "404.htm".to_string(),
-            filesystem_root: "./html/".to_string(),
+            filesystem_root: Config::get_canonical_root("./html/".to_string()).unwrap(),
             server_host: "localhost".to_string(),
             server_limit: 4,
             server_port: 4040,
         };
 
         let mut responder = Responder::new();
-        assert!(responder.matches(&http::request::Message::from_tcp_stream(b"GET / HTTP/1.0").unwrap(), &config));
-        assert!(responder.matches(&http::request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.0").unwrap(), &config));
-        assert!(!responder.matches(&http::request::Message::from_tcp_stream(b"GET /test.htm HTTP/1.1").unwrap(), &config));
+        assert!(responder.matches(
+            &http::request::Message::from_tcp_stream(b"GET / HTTP/1.0").unwrap(),
+            &config
+        ));
+        assert!(responder.matches(
+            &http::request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.0").unwrap(),
+            &config
+        ));
+        assert!(!responder.matches(
+            &http::request::Message::from_tcp_stream(b"GET /../README.md HTTP/1.0").unwrap(),
+            &config
+        ));
+        assert!(!responder.matches(
+            &http::request::Message::from_tcp_stream(b"GET /test.htm HTTP/1.1").unwrap(),
+            &config
+        ));
     }
 
     #[test]
@@ -176,7 +203,7 @@ mod filesystem_test {
         let config = Config {
             filesystem_directory_index: "index.htm".to_string(),
             file_not_found_file: "404.htm".to_string(),
-            filesystem_root: "./html/".to_string(),
+            filesystem_root: Config::get_canonical_root("./html/".to_string()).unwrap(),
             server_host: "localhost".to_string(),
             server_limit: 4,
             server_port: 4040,

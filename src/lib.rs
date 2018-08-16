@@ -27,6 +27,21 @@ pub struct Config {
 // TODO Add command line parser
 
 impl Config {
+    pub fn get_canonical_root(root_path: String) -> Result<String, String> {
+        let root_path = PathBuf::from(&root_path);
+        match fs::canonicalize(&root_path) {
+            Ok(canonical_root) =>  {
+                if let Some(canonical_root) = canonical_root.to_str() {
+                    return Ok(canonical_root.to_string());
+                } else {
+                    return Err(format!("Failed to convert canonical root to string {:?}", canonical_root));
+                }
+            },
+            Err(error) => { return Err(format!("Could not find canonical path from: {:?}, error: {}", &root_path, &error));
+            }
+        }
+    }
+
     /// This method takes a vector of strings and creates a config struct
     /// based on index 1 (server), 2 (port) and 3 (limit)
     pub fn from_env_args(args: Vec<String>) -> Result<Config, String> {
@@ -43,20 +58,8 @@ impl Config {
         };
         let server_host = args[1].clone();
         let filesystem_directory_index = args[4].clone();
-        let mut filesystem_root = args[5].clone();
+        let filesystem_root = Config::get_canonical_root(args[5].clone())?;
         let file_not_found_file = args[6].clone();
-        let root_path = PathBuf::from(&filesystem_root);
-        match fs::canonicalize(root_path) {
-            Ok(canonical_root) =>  {
-                if let Some(canonical_root) = canonical_root.to_str() {
-                    filesystem_root = canonical_root.to_string();
-                } else {
-                    return Err(format!("Failed to convert canonical root to string {:?}", canonical_root));
-                }
-            },
-            Err(error) => { return Err(format!("Could not find canonical path from: {}, error: {}", &filesystem_root, &error));
-            }
-        }
         Ok(Config {
             filesystem_directory_index,
             file_not_found_file,
