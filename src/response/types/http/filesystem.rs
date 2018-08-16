@@ -30,7 +30,7 @@ impl Responder {
         Responder { filename: None }
     }
 
-    pub fn matches(&mut self, request_message: &Message, config: &Config) -> bool {
+    pub fn get_matching_filename(request_message: &Message, config: &Config) -> Option<String> {
         let mut filename = request_message.request_line.request_uri_base.clone();
         filename = format!("{}{}", &config.filesystem_root, &filename);
         let temp_filename = PathBuf::from(&filename);
@@ -44,11 +44,9 @@ impl Responder {
 
                         // Is the file inside file-system root?
                         if filename.starts_with(&config.filesystem_root) {
-
                             let filename_copy = filename.clone();
                             let splits: Vec<&str> = filename_copy.rsplitn(2, '/').collect();
                             if let Some(basename) = splits.get(0) {
-
                                 // Does base-name not start with dot?
                                 if !basename.starts_with(&".".to_string()) {
                                     exists = Path::new(&filename).exists();
@@ -70,12 +68,9 @@ impl Responder {
                                         eprintln!("File is a directory {}", &filename);
                                     }
 
-                                    self.filename = Some(filename);
+                                    return Some(filename);
                                 } else {
-                                    eprintln!(
-                                        "Filename {} starts with a dot!",
-                                        &filename
-                                    );
+                                    eprintln!("Filename {} starts with a dot!", &filename);
                                 }
                             } else {
                                 eprintln!("Failed to find file base-name {}", &filename);
@@ -83,8 +78,7 @@ impl Responder {
                         } else {
                             eprintln!(
                                 "File {} is outside of file-system root {}",
-                                &filename,
-                                &config.filesystem_root
+                                &filename, &config.filesystem_root
                             );
                         }
                     }
@@ -103,7 +97,15 @@ impl Responder {
                 );
             }
         }
-        return exists && !is_dir;
+        return None;
+    }
+
+    pub fn matches(&mut self, request_message: &Message, config: &Config) -> bool {
+        if let Some(filename) = Responder::get_matching_filename(&request_message, &config) {
+            self.filename = Some(filename);
+            return true;
+        }
+        return false;
     }
 
     // Make this respond headers as a HashMap and a string for body
