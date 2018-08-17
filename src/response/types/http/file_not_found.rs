@@ -1,12 +1,6 @@
-use std::collections::HashMap;
-use std::fs;
-use std::fs::File;
-use std::io::prelude::*;
 use std::path::Path;
 
 use application_layer_protocol::http::request;
-use application_layer_protocol::http::response;
-use mime;
 use response::types::http::filesystem;
 use Config;
 
@@ -53,6 +47,15 @@ impl Responder {
 #[cfg(test)]
 mod file_not_found_test {
     use super::*;
+
+    use std::collections::HashMap;
+    use std::fs;
+    use std::fs::File;
+    use std::io::prelude::*;
+
+    use application_layer_protocol::http::response;
+    use mime;
+
     #[test]
     fn matches() {
         let config = Config {
