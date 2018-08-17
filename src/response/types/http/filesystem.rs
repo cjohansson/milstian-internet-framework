@@ -1,8 +1,10 @@
 extern crate chrono;
 
 use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
 use std::fs;
 use std::fs::File;
+use std::hash::{Hash, Hasher};
 use std::io::prelude::*;
 use std::path::Path;
 use std::path::PathBuf;
@@ -24,6 +26,12 @@ impl Responder {
     pub fn get_metadata_modified_as_rfc7231(modified: SystemTime) -> String {
         let datetime: DateTime<Utc> = modified.into();
         format!("{}", datetime.format("%a, %d %b %Y %H:%M:%S GMT"))
+    }
+
+    pub fn get_modified_hash(data: &SystemTime) -> String {
+        let mut hasher = DefaultHasher::new();
+        data.hash(&mut hasher);
+        hasher.finish().to_string()
     }
 
     pub fn new() -> Responder {
@@ -149,9 +157,10 @@ impl Responder {
                                     "Last-Modified".to_string(),
                                     Responder::get_metadata_modified_as_rfc7231(last_modified),
                                 );
-
-                                // TODO Generate ETag as as hash for modified date
-                                // TODO https://stackoverflow.com/questions/29573605/how-do-i-use-stdhashhash
+                                headers.insert(
+                                    "ETag".to_string(),
+                                    Responder::get_modified_hash(&last_modified)
+                                );
 
                                 // TODO Add Expires, Etag here
                                 // TODO Support If-Modified-Since and If-None-Match here
@@ -270,6 +279,10 @@ mod filesystem_test {
                 headers.insert(
                     "Last-Modified".to_string(),
                     Responder::get_metadata_modified_as_rfc7231(last_modified),
+                );
+                headers.insert(
+                    "ETag".to_string(),
+                    Responder::get_modified_hash(&last_modified)
                 );
             }
             headers.insert("Content-Length".to_string(), metadata.len().to_string());

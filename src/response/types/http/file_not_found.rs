@@ -112,6 +112,10 @@ mod file_not_found_test {
                     "Last-Modified".to_string(),
                     filesystem::Responder::get_metadata_modified_as_rfc7231(last_modified),
                 );
+                headers.insert(
+                    "ETag".to_string(),
+                    filesystem::Responder::get_modified_hash(&last_modified)
+                );
             }
             headers.insert("Content-Length".to_string(), metadata.len().to_string());
         }
