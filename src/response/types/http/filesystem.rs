@@ -30,6 +30,10 @@ impl Responder {
         Responder { filename: None }
     }
 
+    pub fn get_cache_control(_config: &Config) -> String {
+        return "2592000".to_string() // TODO Make this dynamic?
+    }
+
     pub fn get_matching_filename(
         request_message: &request::Message,
         config: &Config,
@@ -116,6 +120,7 @@ impl Responder {
     pub fn get_response(
         filename: &String,
         request_message: &request::Message,
+        config: &Config
     ) -> Result<response::Message, String> {
         let mut response_body = Vec::new();
 
@@ -145,10 +150,18 @@ impl Responder {
                                     Responder::get_metadata_modified_as_rfc7231(last_modified),
                                 );
 
-                                // TODO Add Expires, Etag and Cache-Control here
+                                // TODO Generate ETag as as hash for modified date
+                                // TODO https://stackoverflow.com/questions/29573605/how-do-i-use-stdhashhash
+
+                                // TODO Add Expires, Etag here
                                 // TODO Support If-Modified-Since and If-None-Match here
                             }
                         }
+
+                        headers.insert(
+                            "Cache-Control".to_string(),
+                            Responder::get_cache_control(&config)
+                        );
 
                         // Build HTTP response
                         return Ok(response::Message::new(
@@ -176,10 +189,10 @@ impl Responder {
     }
 
     // Make this respond headers as a HashMap and a string for body
-    pub fn respond(&self, request_message: &request::Message) -> Result<Vec<u8>, String> {
+    pub fn respond(&self, request_message: &request::Message, config: &Config) -> Result<Vec<u8>, String> {
         // Does filename exist?
         if let Some(filename) = &self.filename {
-            let mut response = Responder::get_response(&filename, &request_message)?;
+            let mut response = Responder::get_response(&filename, &request_message, &config)?;
             // Build HTTP response
             return Ok(response.to_bytes());
         } else {
@@ -262,6 +275,10 @@ mod filesystem_test {
             headers.insert("Content-Length".to_string(), metadata.len().to_string());
         }
         headers.insert("Content-Type".to_string(), mime::from_filename(&filename));
+        headers.insert(
+            "Cache-Control".to_string(),
+            Responder::get_cache_control(&config)
+        );
 
         let expected_response = response::Message::new(
             "HTTP/1.1".to_string(),
@@ -270,7 +287,7 @@ mod filesystem_test {
             response_body.into_bytes(),
         ).to_bytes();
 
-        let given_response = responder.respond(&request).unwrap();
+        let given_response = responder.respond(&request, &config).unwrap();
         assert_eq!(expected_response, given_response);
     }
 }
