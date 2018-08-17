@@ -158,9 +158,10 @@ impl Responder {
                                     "Last-Modified".to_string(),
                                     Responder::get_metadata_modified_as_rfc7231(last_modified),
                                 );
+                                let etag = Responder::get_modified_hash(&last_modified);
                                 headers.insert(
                                     "ETag".to_string(),
-                                    Responder::get_modified_hash(&last_modified),
+                                    etag.clone()
                                 );
 
                                 let duration = Duration::new(2592000, 0); // TODO Make this dynamic
@@ -170,6 +171,12 @@ impl Responder {
                                         last_modified + duration,
                                     ),
                                 );
+
+                                if let Some(if_none_match) = request_message.headers.get("If-None-Match") {
+                                    if if_none_match == &etag {
+                                        status_code = "304 Not Modified";
+                                    }
+                                }
 
                                 // TODO Add Expires here
 
@@ -248,6 +255,16 @@ mod filesystem_test {
             &request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.0").unwrap(),
             &config
         ));
+
+        // POST request with random header and null bytes
+        let mut request: Vec<u8> = b"POST / HTTP/1.0\r\nAgent: Random browser\r\n\r\ntest=abc".to_vec();
+        request.push(0);
+        request.push(0);
+        assert!(responder.matches(
+            &request::Message::from_tcp_stream(&request).unwrap(),
+            &config
+        ));
+
         assert!(!responder.matches(
             &request::Message::from_tcp_stream(b"GET /../README.md HTTP/1.0").unwrap(),
             &config

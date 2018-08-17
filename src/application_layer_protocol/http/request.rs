@@ -199,7 +199,7 @@ impl Message {
                 __ => Method::Invalid,
             };
 
-            let request_uri = parts.get(1)?.trim().to_string();
+            let request_uri = parts.get(1)?.to_string();
             let request_uri_copy = request_uri.clone();
             let mut request_uri_base = request_uri.clone();
             let mut query_string = String::new();
@@ -268,6 +268,7 @@ impl Message {
     pub fn from_tcp_stream(request: &[u8]) -> Option<Message> {
         if let Ok(request) = str::from_utf8(request) {
             if request.is_ascii() {
+                // println!("request: {}", request);
                 let mut headers: HashMap<String, String> = HashMap::new();
                 let mut body: HashMap<String, String> = HashMap::new();
                 let mut request_line: Line = Line {
@@ -479,6 +480,17 @@ mod request_test {
         assert_eq!(
             response_unwrapped.request_line.protocol,
             Protocol::TwoDotZero
+        );
+
+        // POST request with random header and null bytes
+        let mut request: Vec<u8> = b"POST /random HTTP/1.0\r\nAgent: Random browser\r\n\r\ntest=abc".to_vec();
+        request.push(0);
+        request.push(0);
+        let response = Message::from_tcp_stream(&request);
+        assert!(response.is_some());
+        assert_eq!(
+            "/random".to_string(),
+            response.unwrap().request_line.request_uri
         );
 
         // POST request with random header
