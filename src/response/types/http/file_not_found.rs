@@ -32,10 +32,15 @@ impl Responder {
         return false;
     }
 
-    pub fn respond(&self, request_message: &request::Message, config: &Config) -> Result<Vec<u8>, String> {
+    pub fn respond(
+        &self,
+        request_message: &request::Message,
+        config: &Config,
+    ) -> Result<Vec<u8>, String> {
         // Does filename exist?
         if let Some(filename) = &self.filename {
-            let mut response = filesystem::Responder::get_response(filename, &request_message, &config)?;
+            let mut response =
+                filesystem::Responder::get_response(filename, &request_message, &config)?;
             response.status = "404 File Not Found".to_string();
             return Ok(response.to_bytes());
         } else {
@@ -52,6 +57,7 @@ mod file_not_found_test {
     use std::fs;
     use std::fs::File;
     use std::io::prelude::*;
+    use std::time::Duration;
 
     use application_layer_protocol::http::response;
     use mime;
@@ -117,7 +123,14 @@ mod file_not_found_test {
                 );
                 headers.insert(
                     "ETag".to_string(),
-                    filesystem::Responder::get_modified_hash(&last_modified)
+                    filesystem::Responder::get_modified_hash(&last_modified),
+                );
+                let duration = Duration::new(2592000, 0); // TODO Make this dynamic
+                headers.insert(
+                    "Expires".to_string(),
+                    filesystem::Responder::get_metadata_modified_as_rfc7231(
+                        last_modified + duration,
+                    ),
                 );
             }
             headers.insert("Content-Length".to_string(), metadata.len().to_string());
@@ -125,7 +138,7 @@ mod file_not_found_test {
         headers.insert("Content-Type".to_string(), mime::from_filename(&filename));
         headers.insert(
             "Cache-Control".to_string(),
-            filesystem::Responder::get_cache_control(&config)
+            filesystem::Responder::get_cache_control(&config),
         );
 
         let expected_response = response::Message::new(

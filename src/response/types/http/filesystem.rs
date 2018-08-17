@@ -1,13 +1,14 @@
 extern crate chrono;
 
-use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io::prelude::*;
 use std::path::Path;
 use std::path::PathBuf;
+use std::time::Duration;
 use std::time::SystemTime;
 
 use chrono::offset::Utc;
@@ -39,7 +40,7 @@ impl Responder {
     }
 
     pub fn get_cache_control(_config: &Config) -> String {
-        return "2592000".to_string() // TODO Make this dynamic?
+        return "2592000".to_string(); // TODO Make this dynamic?
     }
 
     pub fn get_matching_filename(
@@ -128,7 +129,7 @@ impl Responder {
     pub fn get_response(
         filename: &String,
         request_message: &request::Message,
-        config: &Config
+        config: &Config,
     ) -> Result<response::Message, String> {
         let mut response_body = Vec::new();
 
@@ -159,17 +160,27 @@ impl Responder {
                                 );
                                 headers.insert(
                                     "ETag".to_string(),
-                                    Responder::get_modified_hash(&last_modified)
+                                    Responder::get_modified_hash(&last_modified),
                                 );
 
-                                // TODO Add Expires, Etag here
+                                let duration = Duration::new(2592000, 0); // TODO Make this dynamic
+                                headers.insert(
+                                    "Expires".to_string(),
+                                    Responder::get_metadata_modified_as_rfc7231(
+                                        last_modified + duration,
+                                    ),
+                                );
+
+                                // TODO Add Expires here
+
                                 // TODO Support If-Modified-Since and If-None-Match here
+                                // TODO 304 Not Modified
                             }
                         }
 
                         headers.insert(
                             "Cache-Control".to_string(),
-                            Responder::get_cache_control(&config)
+                            Responder::get_cache_control(&config),
                         );
 
                         // Build HTTP response
@@ -198,7 +209,11 @@ impl Responder {
     }
 
     // Make this respond headers as a HashMap and a string for body
-    pub fn respond(&self, request_message: &request::Message, config: &Config) -> Result<Vec<u8>, String> {
+    pub fn respond(
+        &self,
+        request_message: &request::Message,
+        config: &Config,
+    ) -> Result<Vec<u8>, String> {
         // Does filename exist?
         if let Some(filename) = &self.filename {
             let mut response = Responder::get_response(&filename, &request_message, &config)?;
@@ -282,7 +297,12 @@ mod filesystem_test {
                 );
                 headers.insert(
                     "ETag".to_string(),
-                    Responder::get_modified_hash(&last_modified)
+                    Responder::get_modified_hash(&last_modified),
+                );
+                let duration = Duration::new(2592000, 0); // TODO Make this dynamic
+                headers.insert(
+                    "Expires".to_string(),
+                    Responder::get_metadata_modified_as_rfc7231(last_modified + duration),
                 );
             }
             headers.insert("Content-Length".to_string(), metadata.len().to_string());
@@ -290,7 +310,7 @@ mod filesystem_test {
         headers.insert("Content-Type".to_string(), mime::from_filename(&filename));
         headers.insert(
             "Cache-Control".to_string(),
-            Responder::get_cache_control(&config)
+            Responder::get_cache_control(&config),
         );
 
         let expected_response = response::Message::new(
