@@ -40,7 +40,7 @@ impl Responder {
     }
 
     pub fn get_cache_control(_config: &Config) -> String {
-        return "2592000".to_string(); // TODO Make this dynamic?
+        return "max-age=2592000".to_string(); // TODO Make this dynamic?
     }
 
     pub fn get_matching_filename(
