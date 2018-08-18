@@ -22,8 +22,8 @@ This project is based on the programming exercise *Building a multithreaded web 
 
 ## Run local server
 
-`visit project repository root`
-`$ cargo run localhost 8888 10 index.htm ./html/ 404.htm`
+* visit project repository root
+* Run `cargo run localhost 8888 10 index.htm ./html/ 404.htm`
 
 **Parameters are:**
 * Hostname
