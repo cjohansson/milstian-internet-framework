@@ -160,7 +160,7 @@ impl Message {
             Protocol::OneDotZero => String::from("HTTP/1.0"),
             Protocol::OneDotOne => String::from("HTTP/1.1"),
             Protocol::TwoDotZero => String::from("HTTP/2.0"),
-            Protocol::Invalid => String::from("INVALID")
+            Protocol::Invalid => String::from("INVALID"),
         }
     }
 
@@ -208,8 +208,7 @@ impl Message {
             if uri_parts.len() == 2 {
                 request_uri_base = uri_parts.get(0)?.to_string();
                 query_string = uri_parts.get(1)?.to_string();
-                if let Some(query_args) = Message::get_query_args_from_string(&query_string)
-                {
+                if let Some(query_args) = Message::get_query_args_from_string(&query_string) {
                     query_arguments = query_args;
                 }
             }
@@ -235,39 +234,42 @@ impl Message {
         } else if parts.len() == 1 {
             // Add support a request line containing only the path name is accepted by servers to maintain compatibility with  clients before the HTTP/1.0 specification
             let method = Method::Get;
-            let request_uri = parts.get(0)?.to_string();
-            let protocol = Protocol::ZeroDotNine;
+            let request_uri = parts.get(0)?.trim_matches(char::from(0)).to_string();
+            if !request_uri.is_empty() {
+                let protocol = Protocol::ZeroDotNine;
 
-            let request_uri_copy = request_uri.clone();
-            let mut request_uri_base = request_uri.clone();
-            let mut query_string = String::new();
-            let mut query_arguments: HashMap<String, String> = HashMap::new();
+                let request_uri_copy = request_uri.clone();
+                let mut request_uri_base = request_uri.clone();
+                let mut query_string = String::new();
+                let mut query_arguments: HashMap<String, String> = HashMap::new();
 
-            let uri_parts: Vec<&str> = request_uri_copy.splitn(2, "?").collect();
-            if uri_parts.len() == 2 {
-                request_uri_base = uri_parts.get(0)?.to_string();
-                query_string = uri_parts.get(1)?.to_string();
-                if let Some(query_args) = Message::get_query_args_from_string(&query_string)
-                {
-                    query_arguments = query_args;
+                let uri_parts: Vec<&str> = request_uri_copy.splitn(2, "?").collect();
+                if uri_parts.len() == 2 {
+                    request_uri_base = uri_parts.get(0)?.to_string();
+                    query_string = uri_parts.get(1)?.to_string();
+                    if let Some(query_args) = Message::get_query_args_from_string(&query_string) {
+                        query_arguments = query_args;
+                    }
                 }
-            }
 
-            return Some(Line {
-                method,
-                protocol,
-                request_uri,
-                request_uri_base,
-                query_arguments,
-                query_string,
-            });
+                return Some(Line {
+                    method,
+                    protocol,
+                    request_uri,
+                    request_uri_base,
+                    query_arguments,
+                    query_string,
+                });
+            }
         }
         None
     }
 
     pub fn from_tcp_stream(request: &[u8]) -> Option<Message> {
-        if let Ok(request) = str::from_utf8(request) {
+        if let Ok(mut request) = str::from_utf8(request) {
             if request.is_ascii() {
+                // Trim null bytes
+                request = request.trim_matches(char::from(0));
                 // println!("request: {}", request);
                 let mut headers: HashMap<String, String> = HashMap::new();
                 let mut body: HashMap<String, String> = HashMap::new();
@@ -290,8 +292,7 @@ impl Message {
                             if line.trim().is_empty() {
                                 section = Section::MessageBody;
                             } else {
-                                let (header_key, header_value) =
-                                    Message::get_header_field(line)?;
+                                let (header_key, header_value) = Message::get_header_field(line)?;
                                 headers.insert(header_key, header_value);
                             }
                         }
@@ -421,8 +422,7 @@ mod request_test {
         assert_eq!(response_unpacked.query_string, String::from(""));
         assert_eq!(response_unpacked.protocol, Protocol::OneDotZero);
 
-        let response =
-            Message::get_request_line("HEAD /moradish.html?test&abc=def HTTP/1.1\r\n");
+        let response = Message::get_request_line("HEAD /moradish.html?test&abc=def HTTP/1.1\r\n");
         assert!(response.is_some());
 
         let response_unpacked = response.unwrap();
@@ -483,7 +483,8 @@ mod request_test {
         );
 
         // POST request with random header and null bytes
-        let mut request: Vec<u8> = b"POST /random HTTP/1.0\r\nAgent: Random browser\r\n\r\ntest=abc".to_vec();
+        let mut request: Vec<u8> =
+            b"POST /random HTTP/1.0\r\nAgent: Random browser\r\n\r\ntest=abc".to_vec();
         request.push(0);
         request.push(0);
         let response = Message::from_tcp_stream(&request);
@@ -494,9 +495,8 @@ mod request_test {
         );
 
         // POST request with random header
-        let response = Message::from_tcp_stream(
-            b"POST / HTTP/1.0\r\nAgent: Random browser\r\n\r\ntest=abc",
-        );
+        let response =
+            Message::from_tcp_stream(b"POST / HTTP/1.0\r\nAgent: Random browser\r\n\r\ntest=abc");
         assert!(response.is_some());
         let response_unwrapped = response.unwrap();
         assert_eq!(response_unwrapped.request_line.method, Method::Post);
@@ -558,6 +558,9 @@ mod request_test {
             response_unwrapped.request_line.protocol,
             Protocol::ZeroDotNine
         );
+
+        let response = Message::from_tcp_stream(&[0; 100]);
+        assert!(response.is_none());
     }
 
 }

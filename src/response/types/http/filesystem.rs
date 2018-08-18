@@ -109,8 +109,8 @@ impl Responder {
             }
             Err(error) => {
                 eprintln!(
-                    "Failed to get canonical path to {:?}, error: {}",
-                    &temp_filename, error
+                    "Failed to get canonical path to {:?}, error: {}, request: {:?}",
+                    &temp_filename, error, &request_message
                 );
             }
         }
