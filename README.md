@@ -1,5 +1,7 @@
 # Milstian - A Rust Web Framework
 
+![Milstian Logo](https://raw.githubusercontent.com/cjohansson/milstian-rust-web-framework/master/html/img/logo1-modified.jpg)
+
 In progress, primarily used for learning Rust programming.
 
 This project is based on the programming exercise *Building a multithreaded web server* from the book *The Rust Programming Language* (*no starch press 2018*) and inspired by the *Aomebo Web Framework for PHP*.
