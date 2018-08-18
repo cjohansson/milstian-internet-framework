@@ -14,8 +14,8 @@ use std::time::SystemTime;
 use chrono::offset::Utc;
 use chrono::DateTime;
 
-use application_layer_protocol::http::request;
-use application_layer_protocol::http::response;
+use application_layer::http::request;
+use application_layer::http::response;
 use mime;
 use Config;
 

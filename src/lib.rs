@@ -2,16 +2,13 @@ extern crate chrono;
 
 use std::env;
 use std::fs;
-use std::net::TcpListener;
 use std::path::PathBuf;
 
-mod application_layer_protocol;
+mod application_layer;
 mod mime;
 mod response;
 mod thread;
-
-use response::Dispatcher;
-use thread::Pool;
+mod transport_layer;
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -127,35 +124,7 @@ mod config_test {
 pub struct Application;
 
 impl Application {
-    /// This method creates a new application based on configuration
-    pub fn new(config: Result<Config, String>) -> Result<Application, String> {
-        let config = config?;
-        let path = format!("{}:{}", &config.server_host, &config.server_port);
-        let listener = TcpListener::bind(&path);
-
-        match listener {
-            Ok(listener) => {
-                let pool = Pool::new(config.server_limit);
-
-                for stream in listener.incoming() {
-                    match stream {
-                        Ok(stream) => {
-                            let config_copy = config.clone();
-                            pool.execute(|| {
-                                Dispatcher::dispatch_request(stream, config_copy);
-                            });
-                        }
-                        Err(e) => {
-                            eprintln!("Failed to listen to incoming stream, error: {}", e);
-                        }
-                    }
-                }
-            }
-            Err(e) => {
-                eprintln!("Failed to bind to server and port, error: {}", e);
-            }
-        }
-
-        Ok(Application)
+    pub fn new(config: Result<Config, String>) -> Result<String, String> {
+        transport_layer::TCP::new(config)
     }
 }

@@ -1,7 +1,7 @@
 pub mod file_not_found;
 pub mod filesystem;
 
-use application_layer_protocol::http;
+use application_layer::http;
 use response::Type;
 use Config;
 

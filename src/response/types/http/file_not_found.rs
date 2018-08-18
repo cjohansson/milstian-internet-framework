@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use application_layer_protocol::http::request;
+use application_layer::http::request;
 use response::types::http::filesystem;
 use Config;
 
@@ -59,7 +59,7 @@ mod file_not_found_test {
     use std::io::prelude::*;
     use std::time::Duration;
 
-    use application_layer_protocol::http::response;
+    use application_layer::http::response;
     use mime;
 
     #[test]
