@@ -22,7 +22,8 @@ This project is based on the programming exercise *Building a multithreaded web 
 
 ## Run local server
 
-`cargo run localhost 8888 10 index.htm ../html/ 404.htm`
+`visit project repository root`
+`$ cargo run localhost 8888 10 index.htm ./html/ 404.htm`
 
 **Parameters are:**
 * Hostname
@@ -32,9 +33,19 @@ This project is based on the programming exercise *Building a multithreaded web 
 * HTTP web-server file-system root
 * File not found file
 
-## Run tests
+## Create application
 
-`cargo test`
+``` rust
+extern crate milstian;
+
+use milstian::{Application, Config};
+
+fn main() {
+    Application::from_tcp(Config::from_env()).expect("Failed to start application");
+}
+
+```
+
 
 ## License
 

@@ -26,7 +26,7 @@ impl TCP {
                             });
                         }
                         Err(e) => {
-                            return Err(format!("Failed to listen to incoming stream, error: {}", e));
+                            eprintln!("Failed to listen to incoming stream, error: {}", e);
                         }
                     }
                 }
