@@ -34,7 +34,7 @@ impl Type<Dispatcher> for Dispatcher {
             } else if file_not_found.matches(&request_message, &config) {
                 return file_not_found.respond(&request_message, &config);
             }
-            // TODO Add more http response types here: not found, page, ajax, invalid request
+            // TODO Add more http response types here: not found, page, ajax, bad request
         }
 
         return Err("Found no matching HTTP response".to_string());

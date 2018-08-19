@@ -12,7 +12,7 @@ use std::time::Duration;
 use std::time::SystemTime;
 
 use chrono::offset::Utc;
-use chrono::DateTime;
+use chrono::{DateTime};
 
 use application_layer::http::request;
 use application_layer::http::response;
@@ -26,7 +26,15 @@ pub struct Responder {
 impl Responder {
     pub fn get_metadata_modified_as_rfc7231(modified: SystemTime) -> String {
         let datetime: DateTime<Utc> = modified.into();
-        format!("{}", datetime.format("%a, %d %b %Y %H:%M:%S GMT"))
+        datetime.to_rfc2822()
+    }
+
+    pub fn get_rfc7231_as_systemtime(modified: &String) -> Option<SystemTime> {
+        if let Ok(datetime) = DateTime::parse_from_rfc2822(&modified) {
+            let modified: SystemTime = datetime.into();
+            return Some(modified);
+        }
+        None
     }
 
     pub fn get_modified_hash(data: &SystemTime) -> String {
@@ -175,13 +183,22 @@ impl Responder {
                                 if let Some(if_none_match) = request_message.headers.get("If-None-Match") {
                                     if if_none_match == &etag {
                                         status_code = "304 Not Modified";
+                                        response_body = Vec::new();
                                     }
                                 }
 
-                                // TODO Add Expires here
-
-                                // TODO Support If-Modified-Since and If-None-Match here
-                                // TODO 304 Not Modified
+                                if status_code != "304 Not Modified" {
+                                    if let Some(if_modified_since) = request_message.headers.get("If-Modified-Since") {
+                                        if let Some(if_modified_since_systemtime) = Responder::get_rfc7231_as_systemtime(if_modified_since) {
+                                            if let Ok(duration) = last_modified.duration_since(if_modified_since_systemtime) {
+                                                if duration.as_secs() <= 0 {
+                                                    status_code = "304 Not Modified";
+                                                    response_body = Vec::new();
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
 
@@ -235,6 +252,8 @@ impl Responder {
 #[cfg(test)]
 mod filesystem_test {
     use super::*;
+    use std::str;
+
     #[test]
     fn matches() {
         let config = Config {
@@ -301,7 +320,6 @@ mod filesystem_test {
         file.read_to_string(&mut response_body).unwrap();
 
         let request = request::Message::from_tcp_stream(b"GET / HTTP/1.1\r\n\r\n").unwrap();
-
         let matches = responder.matches(&request, &config);
         assert!(matches);
 
@@ -339,5 +357,188 @@ mod filesystem_test {
 
         let given_response = responder.respond(&request, &config).unwrap();
         assert_eq!(expected_response, given_response);
+
+        // Matching If Modified Since
+        let mut headers: HashMap<String, String> = HashMap::new();
+        if let Ok(metadata) = fs::metadata(&filename) {
+            if let Ok(last_modified) = metadata.modified() {
+
+                headers.insert("Content-Length".to_string(), metadata.len().to_string());
+
+                headers.insert(
+                    "Last-Modified".to_string(),
+                    Responder::get_metadata_modified_as_rfc7231(last_modified),
+                );
+                headers.insert(
+                    "ETag".to_string(),
+                    Responder::get_modified_hash(&last_modified),
+                );
+                let duration = Duration::new(2592000, 0); // TODO Make this dynamic
+                headers.insert(
+                    "Expires".to_string(),
+                    Responder::get_metadata_modified_as_rfc7231(last_modified + duration),
+                );
+
+                headers.insert("Content-Type".to_string(), mime::from_filename(&filename));
+                headers.insert(
+                    "Cache-Control".to_string(),
+                    Responder::get_cache_control(&config),
+                );
+
+                let response_body_empty = Vec::new();
+
+                let expected_response = response::Message::new(
+                    "HTTP/1.1".to_string(),
+                    "304 Not Modified".to_string(),
+                    headers,
+                    response_body_empty
+                ).to_bytes();
+
+                let request_string = format!("GET /index.htm HTTP/1.1\r\nIf-Modified-Since: {}\r\n\r\n", Responder::get_metadata_modified_as_rfc7231(last_modified));
+                let request = request::Message::from_tcp_stream(request_string.as_bytes()).unwrap();
+
+                let given_response = responder.respond(&request, &config).unwrap();
+                println!("request: {}, response: {:?}", request_string, str::from_utf8(&given_response));
+                assert_eq!(expected_response, given_response);
+            }
+        }
+
+        // Not Matching If Modified Since
+        let mut headers: HashMap<String, String> = HashMap::new();
+        if let Ok(metadata) = fs::metadata(&filename) {
+            if let Ok(last_modified) = metadata.modified() {
+                headers.insert("Content-Length".to_string(), metadata.len().to_string());
+                
+                headers.insert(
+                    "Last-Modified".to_string(),
+                    Responder::get_metadata_modified_as_rfc7231(last_modified),
+                );
+                headers.insert(
+                    "ETag".to_string(),
+                    Responder::get_modified_hash(&last_modified),
+                );
+                let duration = Duration::new(2592000, 0); // TODO Make this dynamic
+                headers.insert(
+                    "Expires".to_string(),
+                    Responder::get_metadata_modified_as_rfc7231(last_modified + duration),
+                );
+                headers.insert("Content-Type".to_string(), mime::from_filename(&filename));
+                headers.insert(
+                    "Cache-Control".to_string(),
+                    Responder::get_cache_control(&config),
+                );
+
+                // Build response body
+                let mut response_body = String::new();
+                let mut file = File::open(&filename).unwrap();
+                file.read_to_string(&mut response_body).unwrap();
+
+                let expected_response = response::Message::new(
+                    "HTTP/1.1".to_string(),
+                    "200 OK".to_string(),
+                    headers,
+                    response_body.into_bytes()
+                ).to_bytes();
+
+                let duration = Duration::new(250000, 0);
+                let request_string = format!("GET /index.htm HTTP/1.1\r\nIf-Modified-Since: {}\r\n\r\n", Responder::get_metadata_modified_as_rfc7231(last_modified - duration));
+                let request = request::Message::from_tcp_stream(request_string.as_bytes()).unwrap();
+                let given_response = responder.respond(&request, &config).unwrap();
+
+                println!("request: {}, response: {:?}, expected response: {:?}", request_string, str::from_utf8(&given_response), str::from_utf8(&expected_response));
+                assert_eq!(expected_response, given_response);
+            }
+        }
+
+        // If None Match
+        let mut headers: HashMap<String, String> = HashMap::new();
+        if let Ok(metadata) = fs::metadata(&filename) {
+            if let Ok(last_modified) = metadata.modified() {
+
+                headers.insert("Content-Length".to_string(), metadata.len().to_string());
+
+                let request_string = format!("GET /index.htm HTTP/1.1\r\nIf-None-Match: {}\r\n\r\n", Responder::get_modified_hash(&last_modified));
+                let request = request::Message::from_tcp_stream(request_string.as_bytes()).unwrap();
+                headers.insert(
+                    "Last-Modified".to_string(),
+                    Responder::get_metadata_modified_as_rfc7231(last_modified),
+                );
+                headers.insert(
+                    "ETag".to_string(),
+                    Responder::get_modified_hash(&last_modified),
+                );
+                let duration = Duration::new(2592000, 0); // TODO Make this dynamic
+                headers.insert(
+                    "Expires".to_string(),
+                    Responder::get_metadata_modified_as_rfc7231(last_modified + duration),
+                );
+
+                headers.insert("Content-Type".to_string(), mime::from_filename(&filename));
+                headers.insert(
+                    "Cache-Control".to_string(),
+                    Responder::get_cache_control(&config),
+                );
+
+                let response_body = Vec::new();
+
+                let expected_response = response::Message::new(
+                    "HTTP/1.1".to_string(),
+                    "304 Not Modified".to_string(),
+                    headers,
+                    response_body
+                ).to_bytes();
+
+                let given_response = responder.respond(&request, &config).unwrap();
+                assert_eq!(expected_response, given_response);
+            }
+        }
+
+        // Not Matching If None Match
+        let mut headers: HashMap<String, String> = HashMap::new();
+        if let Ok(metadata) = fs::metadata(&filename) {
+            if let Ok(last_modified) = metadata.modified() {
+                headers.insert("Content-Length".to_string(), metadata.len().to_string());
+                
+                headers.insert(
+                    "Last-Modified".to_string(),
+                    Responder::get_metadata_modified_as_rfc7231(last_modified),
+                );
+                headers.insert(
+                    "ETag".to_string(),
+                    Responder::get_modified_hash(&last_modified),
+                );
+                let duration = Duration::new(2592000, 0); // TODO Make this dynamic
+                headers.insert(
+                    "Expires".to_string(),
+                    Responder::get_metadata_modified_as_rfc7231(last_modified + duration),
+                );
+                headers.insert("Content-Type".to_string(), mime::from_filename(&filename));
+                headers.insert(
+                    "Cache-Control".to_string(),
+                    Responder::get_cache_control(&config),
+                );
+
+                // Build response body
+                let mut response_body = String::new();
+                let mut file = File::open(&filename).unwrap();
+                file.read_to_string(&mut response_body).unwrap();
+
+                let expected_response = response::Message::new(
+                    "HTTP/1.1".to_string(),
+                    "200 OK".to_string(),
+                    headers,
+                    response_body.into_bytes()
+                ).to_bytes();
+
+                let duration = Duration::new(250000, 0);
+                let last_modified = last_modified - duration;
+                let request_string = format!("GET /index.htm HTTP/1.1\r\nIf-None-Match: {}\r\n\r\n", Responder::get_modified_hash(&last_modified));
+                let request = request::Message::from_tcp_stream(request_string.as_bytes()).unwrap();
+                let given_response = responder.respond(&request, &config).unwrap();
+
+                println!("request: {}, response: {:?}, expected response: {:?}", request_string, str::from_utf8(&given_response), str::from_utf8(&expected_response));
+                assert_eq!(expected_response, given_response);
+            }
+        }
     }
 }
