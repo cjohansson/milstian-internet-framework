@@ -11,7 +11,9 @@ pub struct Dispatcher {
 
 impl Dispatcher {
     pub fn new() -> Dispatcher {
-        Dispatcher { request_message: None }
+        Dispatcher {
+            request_message: None,
+        }
     }
 }
 
@@ -31,10 +33,10 @@ impl Type<Dispatcher> for Dispatcher {
 
             if filesystem.matches(&request_message, &config) {
                 return filesystem.respond(&request_message, &config);
+                // TODO Add more http response types here: not found, page, ajax, bad request
             } else if file_not_found.matches(&request_message, &config) {
                 return file_not_found.respond(&request_message, &config);
             }
-            // TODO Add more http response types here: not found, page, ajax, bad request
         }
 
         return Err("Found no matching HTTP response".to_string());

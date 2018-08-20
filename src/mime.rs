@@ -45,7 +45,9 @@ pub fn from_filename(filename: &str) -> String {
                 "png" => "image/png",
                 "pdf" => "application/pdf",
                 "ppt" => "application/vnd.ms-powerpoint",
-                "pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                "pptx" => {
+                    "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                }
                 "rar" => "application/x-rar-compressed",
                 "rtf" => "application/rtf",
                 "sh" => "application/x-sh",
@@ -73,7 +75,7 @@ pub fn from_filename(filename: &str) -> String {
                 "3gp" => "video/3gpp",
                 "3g2" => "video/3gpp2",
                 "7z" => "application/x-7z-compressed",
-                _ => "application/octet-stream"
+                _ => "application/octet-stream",
             };
         }
     }

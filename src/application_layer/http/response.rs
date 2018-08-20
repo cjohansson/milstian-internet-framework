@@ -5,16 +5,21 @@ pub struct Message {
     protocol: String,
     pub status: String,
     headers: HashMap<String, String>,
-    body: Vec<u8>
+    body: Vec<u8>,
 }
 
 impl Message {
-    pub fn new(protocol: String, status: String, headers: HashMap<String, String>, body: Vec<u8>) -> Message {
+    pub fn new(
+        protocol: String,
+        status: String,
+        headers: HashMap<String, String>,
+        body: Vec<u8>,
+    ) -> Message {
         Message {
             protocol,
             status,
             headers,
-            body
+            body,
         }
     }
 
@@ -23,7 +28,7 @@ impl Message {
 
         if !&self.headers.is_empty() {
             let mut headers: Vec<(&String, &String)> = self.headers.iter().collect();
-            headers.sort_by(|a,b| a.cmp(b));
+            headers.sort_by(|a, b| a.cmp(b));
             for (key, value) in headers {
                 response.push_str(&format!("{}: {}\r\n", &key, &value));
             }
@@ -38,7 +43,7 @@ impl Message {
 
         if !&self.headers.is_empty() {
             let mut headers: Vec<(&String, &String)> = self.headers.iter().collect();
-            headers.sort_by(|a,b| a.cmp(b));
+            headers.sort_by(|a, b| a.cmp(b));
             for (key, value) in headers {
                 response.push_str(&format!("{}: {}\r\n", &key, &value));
             }
@@ -59,7 +64,7 @@ impl Message {
 
         if !&self.headers.is_empty() {
             let mut headers: Vec<(&String, &String)> = self.headers.iter().collect();
-            headers.sort_by(|a,b| a.cmp(b));
+            headers.sort_by(|a, b| a.cmp(b));
             for (key, value) in headers {
                 response.append(&mut format!("{}: {}\r\n", &key, &value).into_bytes());
             }

@@ -1,8 +1,8 @@
 use std::net::TcpListener;
 
-use Config;
 use response::Dispatcher;
 use thread::Pool;
+use Config;
 
 pub struct TCP {}
 
