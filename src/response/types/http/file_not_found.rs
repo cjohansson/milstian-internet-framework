@@ -66,10 +66,11 @@ mod file_not_found_test {
         let config = Config {
             filesystem_directory_index: "index.htm".to_string(),
             file_not_found_file: "404.htm".to_string(),
-            filesystem_root: Config::get_canonical_root("./html/".to_string()).unwrap(),
+            filesystem_root: Config::get_canonical_root(&"./html/".to_string()).unwrap(),
             server_host: "localhost".to_string(),
             server_limit: 4,
             server_port: 4040,
+            tcp_limit: 1024,
         };
         let mut responder = Responder::new();
         assert!(responder.matches(
@@ -88,10 +89,11 @@ mod file_not_found_test {
         let config = Config {
             filesystem_directory_index: "index.htm".to_string(),
             file_not_found_file: "404_file.htm".to_string(),
-            filesystem_root: Config::get_canonical_root("./html/".to_string()).unwrap(),
+            filesystem_root: Config::get_canonical_root(&"./html/".to_string()).unwrap(),
             server_host: "localhost".to_string(),
             server_limit: 4,
             server_port: 4040,
+            tcp_limit: 1024,
         };
         let mut responder = Responder::new();
         assert!(!responder.matches(
@@ -105,10 +107,11 @@ mod file_not_found_test {
         let config = Config {
             filesystem_directory_index: "index.htm".to_string(),
             file_not_found_file: "404.htm".to_string(),
-            filesystem_root: Config::get_canonical_root("./html/".to_string()).unwrap(),
+            filesystem_root: Config::get_canonical_root(&"./html/".to_string()).unwrap(),
             server_host: "localhost".to_string(),
             server_limit: 4,
             server_port: 4040,
+            tcp_limit: 1024,
         };
         let mut responder = Responder::new();
 

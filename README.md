@@ -25,7 +25,7 @@ This project is based on the programming exercise *Building a multithreaded web 
 ## Run local server
 
 * visit project repository root
-* Run `cargo run localhost 8888 10 index.htm ./html/ 404.htm`
+* Run `cargo run localhost 8888 10 index.htm ./html/ 404.htm 1024`
 
 **Parameters are:**
 * Hostname
@@ -34,6 +34,7 @@ This project is based on the programming exercise *Building a multithreaded web 
 * Directory index file
 * HTTP web-server file-system root
 * File not found file
+* Maximum TCP size
 
 ## Create application
 
