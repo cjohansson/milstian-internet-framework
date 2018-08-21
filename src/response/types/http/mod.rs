@@ -1,3 +1,4 @@
+pub mod error;
 pub mod file_not_found;
 pub mod filesystem;
 
@@ -30,12 +31,15 @@ impl Type<Dispatcher> for Dispatcher {
         if let Some(request_message) = &self.request_message {
             let mut filesystem = filesystem::Responder::new();
             let mut file_not_found = file_not_found::Responder::new();
+            let mut error = error::Responder::new();
 
             if filesystem.matches(&request_message, &config) {
                 return filesystem.respond(&request_message, &config);
-                // TODO Add more http response types here: not found, page, ajax, bad request
+            // TODO Add more http response types here: not found, page, ajax, bad request
             } else if file_not_found.matches(&request_message, &config) {
                 return file_not_found.respond(&request_message, &config);
+            } else if error.matches(&request_message, &config) {
+                return error.respond(&request_message, &config);
             }
         }
 
