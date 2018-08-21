@@ -13,23 +13,23 @@ impl Responder {
         Responder { filename: None }
     }
 
-    pub fn matches(&mut self, request_message: &request::Message, config: &Config) -> bool {
-        if let None = filesystem::Responder::get_matching_filename(&request_message, &config) {
-            let filename = format!(
-                "{}/{}",
-                &config.filesystem_root, &config.file_not_found_file
-            );
-            let exists = Path::new(&filename).exists();
-            let mut is_dir = false;
-            if exists {
-                is_dir = Path::new(&filename).is_dir();
-            } else {
-                eprintln!("File not found file does not exists {}", &filename);
+    pub fn matches(&mut self, _request_message: &request::Message, config: &Config) -> bool {
+        let filename = format!(
+            "{}/{}",
+            &config.filesystem_root, &config.file_not_found_file
+        );
+        let exists = Path::new(&filename).exists();
+        let mut is_dir = false;
+        if exists {
+            is_dir = Path::new(&filename).is_dir();
+            if is_dir {
+                eprintln!("File not found file is directory {}", &filename);
             }
-            self.filename = Some(filename);
-            return exists && !is_dir;
+        } else {
+            eprintln!("File not found file does not exists {}", &filename);
         }
-        return false;
+        self.filename = Some(filename);
+        return exists && !is_dir;
     }
 
     pub fn respond(
@@ -37,14 +37,13 @@ impl Responder {
         request_message: &request::Message,
         config: &Config,
     ) -> Result<Vec<u8>, String> {
-        // Does filename exist?
         if let Some(filename) = &self.filename {
             let mut response =
                 filesystem::Responder::get_response(filename, &request_message, &config)?;
             response.status = "404 File Not Found".to_string();
             return Ok(response.to_bytes());
         } else {
-            return Err("Error: Filename missing".to_string());
+            return Err("Error: File Not Found Filename missing".to_string());
         }
     }
 }
@@ -81,8 +80,22 @@ mod file_not_found_test {
             &request::Message::from_tcp_stream(b"GET /index3.htm HTTP/1.0").unwrap(),
             &config
         ));
-        assert!(!responder.matches(
+        assert!(responder.matches(
             &request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.1").unwrap(),
+            &config
+        ));
+
+        let config = Config {
+            filesystem_directory_index: "index.htm".to_string(),
+            file_not_found_file: "404_file.htm".to_string(),
+            filesystem_root: Config::get_canonical_root("./html/".to_string()).unwrap(),
+            server_host: "localhost".to_string(),
+            server_limit: 4,
+            server_port: 4040,
+        };
+        let mut responder = Responder::new();
+        assert!(!responder.matches(
+            &request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.0").unwrap(),
             &config
         ));
     }
