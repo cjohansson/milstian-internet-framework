@@ -3,13 +3,11 @@ use application_layer::http::response;
 use std::collections::HashMap;
 use Config;
 
-pub struct Responder {
-    pub filename: Option<String>,
-}
+pub struct Responder {}
 
 impl Responder {
     pub fn new() -> Responder {
-        Responder { filename: None }
+        Responder {}
     }
 
     pub fn matches(&mut self, _request_message: &request::Message, _config: &Config) -> bool {

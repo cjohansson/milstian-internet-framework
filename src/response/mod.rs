@@ -14,8 +14,7 @@ impl Dispatcher {
     /// This method takes a TcpStream and finds appropriate response handler
     pub fn dispatch_request(mut stream: TcpStream, config: Config) {
         // Create a array with 512 elements containing the value 0
-        let mut buffer = [0; 1024];
-        // TODO Make request size dynamic up to a certain limit
+        let mut buffer = [0; 1024]; // TODO Make request size dynamic up to a certain limit
 
         if let Ok(_) = stream.read(&mut buffer) {
             let mut response = Vec::new();
@@ -48,7 +47,7 @@ impl Dispatcher {
                 }
             } else {
                 eprintln!(
-                    "Found no response for request {:?}",
+                    "Found no response for TCP request {:?}",
                     str::from_utf8(&buffer)
                 );
             }

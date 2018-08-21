@@ -47,8 +47,8 @@ impl Message {
             for (key, value) in headers {
                 response.push_str(&format!("{}: {}\r\n", &key, &value));
             }
-            response.push_str("\r\n");
         }
+        response.push_str("\r\n");
 
         if !&self.body.is_empty() {
             if let Ok(body_string) = str::from_utf8(&self.body) {
@@ -68,8 +68,8 @@ impl Message {
             for (key, value) in headers {
                 response.append(&mut format!("{}: {}\r\n", &key, &value).into_bytes());
             }
-            response.append(&mut "\r\n".to_string().into_bytes());
         }
+        response.append(&mut "\r\n".to_string().into_bytes());
 
         if !&self.body.is_empty() {
             response.append(&mut self.body);
