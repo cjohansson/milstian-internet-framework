@@ -18,7 +18,7 @@ pub struct Config {
     pub server_limit: usize,
     pub server_host: String,
     pub server_port: u32,
-    pub tcp_limit: u32,
+    pub tcp_limit: usize,
 }
 
 // TODO Add a TOML parser
@@ -50,7 +50,7 @@ impl Config {
     /// This method takes a vector of strings and creates a config struct
     /// based on index 1 (server), 2 (port) and 3 (limit)
     pub fn from_env_args(args: Vec<String>) -> Result<Config, String> {
-        if args.len() < 7 {
+        if args.len() < 8 {
             return Err("Not enough shell arguments!".to_string());
         }
         let server_limit: usize = match args[3].clone().parse() {
@@ -65,7 +65,7 @@ impl Config {
         let filesystem_directory_index = args[4].clone();
         let filesystem_root = Config::get_canonical_root(&args[5])?;
         let file_not_found_file = args[6].clone();
-        let tcp_limit: u32 = match args[7].clone().parse() {
+        let tcp_limit: usize = match args[7].clone().parse() {
             Ok(num) => num,
             Err(_) => return Err("Failed to parse TCP limit!".to_string()),
         };
