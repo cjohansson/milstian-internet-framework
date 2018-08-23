@@ -1,7 +1,7 @@
 mod types;
 
 use std::io::prelude::*;
-use std::net::TcpStream;
+use std::net::{SocketAddr, TcpStream};
 use std::str;
 
 use self::types::http;
@@ -12,10 +12,12 @@ pub struct Dispatcher {}
 
 impl Dispatcher {
     /// This method takes a TcpStream and finds appropriate response handler
-    pub fn dispatch_request(mut stream: TcpStream, config: Config) {
+    pub fn dispatch_request(mut stream: TcpStream, socket: SocketAddr, config: Config) {
         // Create a array with 512 elements containing the value 0
         let mut temp_buffer = [0; 512];
         let mut buffer: Vec<u8> = Vec::new();
+
+        println!("Received stream from {:?}", socket);
 
         if let Ok(read_size) = stream.read(&mut temp_buffer) {
             // Move all non-empty values to new buffer
@@ -29,12 +31,10 @@ impl Dispatcher {
             }
 
             // Did we read maximum number of bytes?
-            if read_size == 512
-                && config.tcp_limit > 512
-            {
+            if read_size == 512 && config.tcp_limit > 512 {
                 loop {
                     match stream.read(&mut temp_buffer) {
-                        Ok(read_size) =>  {
+                        Ok(read_size) => {
                             // Move all non-empty values to new buffer
                             for value in temp_buffer.iter() {
                                 if value != &0 {
@@ -42,12 +42,10 @@ impl Dispatcher {
                                 }
                             }
 
-                            if read_size < 512
-                                || buffer.len() < config.tcp_limit
-                            {
+                            if read_size < 512 || buffer.len() < config.tcp_limit {
                                 break;
                             }
-                        },
+                        }
                         Err(error) => {
                             eprintln!("Failed to read from stream, error: {}", error);
                             break;
