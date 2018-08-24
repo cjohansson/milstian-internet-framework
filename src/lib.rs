@@ -131,7 +131,7 @@ mod config_test {
 pub struct Application;
 
 impl Application {
-    pub fn via_tcp(config: Result<Config, String>) {
-        transport_layer::TCP::new(config)
+    pub fn tcp_http(config: Result<Config, String>) {
+        transport_layer::TCP::http(config)
     }
 }

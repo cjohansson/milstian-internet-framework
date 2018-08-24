@@ -8,7 +8,7 @@ pub struct TCP {}
 
 impl TCP {
     /// This method creates a new application based on configuration
-    pub fn new(config: Result<Config, String>) {
+    pub fn http(config: Result<Config, String>) {
         let config = config.expect("Missing configuration!");
         let path = format!("{}:{}", &config.server_host, &config.server_port);
         let listener = TcpListener::bind(&path);
@@ -21,7 +21,7 @@ impl TCP {
                         Ok((stream, socket)) => {
                             let config_copy = config.clone();
                             pool.execute(move || {
-                                Dispatcher::dispatch_request(stream, socket, config_copy);
+                                Dispatcher::http(stream, socket, config_copy);
                             });
                         }
                         Err(e) => {

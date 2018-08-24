@@ -11,7 +11,7 @@ pub struct Dispatcher {}
 
 impl Dispatcher {
     /// This method takes a TcpStream and finds appropriate response handler
-    pub fn dispatch_request(mut stream: TcpStream, socket: SocketAddr, config: Config) {
+    pub fn http(mut stream: TcpStream, socket: SocketAddr, config: Config) {
         // Create a array with 512 elements containing the value 0
         let mut temp_buffer = [0; 512];
         let mut buffer: Vec<u8> = Vec::new();
