@@ -3,7 +3,6 @@ pub mod file_not_found;
 pub mod filesystem;
 
 use application_layer::http;
-use response::tcp::Type;
 use Config;
 
 pub struct Dispatcher {
@@ -18,8 +17,8 @@ impl Dispatcher {
     }
 }
 
-impl Type<Dispatcher> for Dispatcher {
-    fn matches(&mut self, request: &[u8], _config: &Config) -> bool {
+impl Dispatcher {
+    pub fn matches(&mut self, request: &[u8], _config: &Config) -> bool {
         if let Some(request_message) = http::request::Message::from_tcp_stream(request) {
             self.request_message = Some(request_message);
             return true;
@@ -27,7 +26,7 @@ impl Type<Dispatcher> for Dispatcher {
         false
     }
 
-    fn respond(&self, _request: &[u8], config: &Config) -> Result<Vec<u8>, String> {
+    pub fn respond(&self, _request: &[u8], config: &Config) -> Result<Vec<u8>, String> {
         if let Some(request_message) = &self.request_message {
             let mut filesystem = filesystem::Responder::new();
             let mut file_not_found = file_not_found::Responder::new();

@@ -89,9 +89,3 @@ impl Dispatcher {
         }
     }
 }
-
-// This is the trait that all response types implement
-trait Type<T> {
-    fn matches(&mut self, request: &[u8], config: &Config) -> bool;
-    fn respond(&self, request: &[u8], config: &Config) -> Result<Vec<u8>, String>;
-}
