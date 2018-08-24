@@ -11,11 +11,12 @@ This project is based on the programming exercise *Building a multithreaded web 
 * Websites are scaleable, fast and robust
 
 ## Goals
-* Concurrent TCP-server with integrated web application framework and potential support for other application layer protocols.
+* Concurrent Internet-server with integrated HTTP and HTTP over TLS via TCP/IP web application framework
 * Easy to customize for any kind of application
 * Fast
 * Scaleable
 * Flexible
+* Potential support for other transport protocols and application layer protocols
 
 ## Development
 
@@ -28,13 +29,13 @@ This project is based on the programming exercise *Building a multithreaded web 
 * Run `cargo run localhost 8888 10 index.htm ./html/ 404.htm 1024`
 
 **Parameters are:**
-* Hostname
-* Port
+* TCP Hostname
+* TCP Port
 * Limit of workers
-* Directory index file
+* HTTP directory index file
 * HTTP web-server file-system root
-* File not found file
-* Maximum TCP size
+* HTTP file not found file
+* Maximum TCP request size
 
 ## Create application
 
