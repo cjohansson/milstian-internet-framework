@@ -3,7 +3,7 @@ pub mod file_not_found;
 pub mod filesystem;
 
 use application_layer::http;
-use response::Type;
+use response::tcp::Type;
 use Config;
 
 pub struct Dispatcher {

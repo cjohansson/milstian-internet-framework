@@ -1,6 +1,6 @@
 use std::net::TcpListener;
 
-use response::Dispatcher;
+use response::tcp::Dispatcher;
 use thread::Pool;
 use Config;
 

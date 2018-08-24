@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use application_layer::http::request;
-use response::types::http::filesystem;
+use response::tcp::http::filesystem;
 use Config;
 
 pub struct Responder {
