@@ -11,7 +11,8 @@ This project is based on the programming exercise *Building a multithreaded web 
 * Websites are scaleable, fast and robust
 
 ## Goals
-* Concurrent Internet-server with integrated HTTP and HTTP over TLS via TCP/IP web application framework
+* Concurrent Internet-server with integrated HTTP and HTTP over TLS via TCP/IP support
+* Integrated web application framework
 * Easy to customize for any kind of application
 * Fast
 * Scaleable
