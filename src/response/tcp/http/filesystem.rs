@@ -17,6 +17,7 @@ use chrono::{DateTime, TimeZone};
 use application_layer::http::request;
 use application_layer::http::response;
 use mime;
+use response::tcp::http::ResponderInterface;
 use Config;
 
 pub struct Responder {
@@ -51,10 +52,6 @@ impl Responder {
         let mut hasher = DefaultHasher::new();
         data.hash(&mut hasher);
         hasher.finish().to_string()
-    }
-
-    pub fn new() -> Responder {
-        Responder { filename: None }
     }
 
     pub fn get_cache_control(_config: &Config) -> String {
@@ -133,14 +130,6 @@ impl Responder {
             }
         }
         return None;
-    }
-
-    pub fn matches(&mut self, request_message: &request::Message, config: &Config) -> bool {
-        if let Some(filename) = Responder::get_matching_filename(&request_message, &config) {
-            self.filename = Some(filename);
-            return true;
-        }
-        return false;
     }
 
     // Make this respond headers as a HashMap and a string for body
@@ -252,9 +241,23 @@ impl Responder {
             }
         }
     }
+}
+
+impl ResponderInterface for Responder {
+    fn new() -> Responder {
+        Responder { filename: None }
+    }
+
+    fn matches(&mut self, request_message: &request::Message, config: &Config) -> bool {
+        if let Some(filename) = Responder::get_matching_filename(&request_message, &config) {
+            self.filename = Some(filename);
+            return true;
+        }
+        return false;
+    }
 
     // Make this respond headers as a HashMap and a string for body
-    pub fn respond(
+    fn respond(
         &self,
         request_message: &request::Message,
         config: &Config,
@@ -273,6 +276,7 @@ impl Responder {
 #[cfg(test)]
 mod filesystem_test {
     use super::*;
+    use response::tcp::http;
     use std::str;
 
     #[test]

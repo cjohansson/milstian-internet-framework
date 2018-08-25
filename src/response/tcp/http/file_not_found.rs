@@ -2,18 +2,19 @@ use std::path::Path;
 
 use application_layer::http::request;
 use response::tcp::http::filesystem;
+use response::tcp::http::ResponderInterface;
 use Config;
 
 pub struct Responder {
     pub filename: Option<String>,
 }
 
-impl Responder {
-    pub fn new() -> Responder {
+impl ResponderInterface for Responder {
+    fn new() -> Responder {
         Responder { filename: None }
     }
 
-    pub fn matches(&mut self, _request_message: &request::Message, config: &Config) -> bool {
+    fn matches(&mut self, _request_message: &request::Message, config: &Config) -> bool {
         let filename = format!(
             "{}/{}",
             &config.filesystem_root, &config.file_not_found_file
@@ -32,7 +33,7 @@ impl Responder {
         return exists && !is_dir;
     }
 
-    pub fn respond(
+    fn respond(
         &self,
         request_message: &request::Message,
         config: &Config,

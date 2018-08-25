@@ -3,18 +3,20 @@ use application_layer::http::response;
 use std::collections::HashMap;
 use Config;
 
+use response::tcp::http::ResponderInterface;
+
 pub struct Responder {}
 
-impl Responder {
-    pub fn new() -> Responder {
+impl ResponderInterface for Responder {
+    fn new() -> Responder {
         Responder {}
     }
 
-    pub fn matches(&mut self, _request_message: &request::Message, _config: &Config) -> bool {
+    fn matches(&mut self, _request_message: &request::Message, _config: &Config) -> bool {
         true
     }
 
-    pub fn respond(
+    fn respond(
         &self,
         request_message: &request::Message,
         _config: &Config,
