@@ -1,6 +1,7 @@
 use application_layer::http::request;
 use application_layer::http::response;
 use std::collections::HashMap;
+use std::net::SocketAddr;
 use Config;
 
 use response::tcp::http::ResponderInterface;
@@ -14,7 +15,12 @@ impl Responder {
 }
 
 impl ResponderInterface for Responder {
-    fn matches(&mut self, _request_message: &request::Message, _config: &Config) -> bool {
+    fn matches(
+        &mut self,
+        _request_message: &request::Message,
+        _config: &Config,
+        _socket: &SocketAddr,
+    ) -> bool {
         true
     }
 
@@ -22,6 +28,7 @@ impl ResponderInterface for Responder {
         &self,
         request_message: &request::Message,
         _config: &Config,
+        _socket: &SocketAddr,
     ) -> Result<Vec<u8>, String> {
         let status_code = "500 Internal Server Error";
         let protocol = request::Message::get_protocol_text(&request_message.request_line.protocol);
@@ -44,6 +51,7 @@ mod error_test {
 
     use application_layer::http::response;
     use std::collections::HashMap;
+    use std::net::{IpAddr, Ipv4Addr};
 
     #[test]
     fn matches() {
@@ -56,18 +64,22 @@ mod error_test {
             server_port: 4040,
             tcp_limit: 1024,
         };
+        let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
         let mut responder = Responder::new();
         assert!(responder.matches(
             &request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.0").unwrap(),
-            &config
+            &config,
+            &socket
         ));
         assert!(responder.matches(
             &request::Message::from_tcp_stream(b"GET /index3.htm HTTP/1.0").unwrap(),
-            &config
+            &config,
+            &socket
         ));
         assert!(responder.matches(
             &request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.1").unwrap(),
-            &config
+            &config,
+            &socket
         ));
     }
 
@@ -83,12 +95,13 @@ mod error_test {
             tcp_limit: 1024,
         };
         let mut responder = Responder::new();
+        let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
 
         // Build response body
         let mut response_body = String::new();
         let request =
             request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.1\r\n\r\n").unwrap();
-        let matches = responder.matches(&request, &config);
+        let matches = responder.matches(&request, &config, &socket);
         assert!(matches);
 
         let mut headers: HashMap<String, String> = HashMap::new();
@@ -100,7 +113,7 @@ mod error_test {
             response_body.into_bytes(),
         ).to_bytes();
 
-        let given_response = responder.respond(&request, &config).unwrap();
+        let given_response = responder.respond(&request, &config, &socket).unwrap();
         assert_eq!(expected_response, given_response);
     }
 }

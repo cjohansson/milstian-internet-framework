@@ -33,7 +33,7 @@ impl Dispatcher {
         &self,
         _request: &[u8],
         config: &Config,
-        _socket: &SocketAddr,
+        socket: &SocketAddr,
     ) -> Result<Vec<u8>, String> {
         if let Some(request_message) = &self.request_message {
             let mut responders: Vec<Box<ResponderInterface>> = vec![
@@ -43,8 +43,8 @@ impl Dispatcher {
             ];
 
             for mut responder in responders.into_iter() {
-                if responder.matches(&request_message, &config) {
-                    return responder.respond(&request_message, &config);
+                if responder.matches(&request_message, &config, &socket) {
+                    return responder.respond(&request_message, &config, &socket);
                 }
             }
         }
@@ -54,6 +54,6 @@ impl Dispatcher {
 }
 
 trait ResponderInterface {
-    fn matches(&mut self, &request::Message, &Config) -> bool;
-    fn respond(&self, &request::Message, &Config) -> Result<Vec<u8>, String>;
+    fn matches(&mut self, &request::Message, &Config, &SocketAddr) -> bool;
+    fn respond(&self, &request::Message, &Config, &SocketAddr) -> Result<Vec<u8>, String>;
 }

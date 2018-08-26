@@ -1,3 +1,4 @@
+use std::net::SocketAddr;
 use std::path::Path;
 
 use application_layer::http::request;
@@ -16,7 +17,12 @@ impl Responder {
 }
 
 impl ResponderInterface for Responder {
-    fn matches(&mut self, _request_message: &request::Message, config: &Config) -> bool {
+    fn matches(
+        &mut self,
+        _request_message: &request::Message,
+        config: &Config,
+        _socket: &SocketAddr,
+    ) -> bool {
         let filename = format!(
             "{}/{}",
             &config.filesystem_root, &config.file_not_found_file
@@ -39,6 +45,7 @@ impl ResponderInterface for Responder {
         &self,
         request_message: &request::Message,
         config: &Config,
+        _socket: &SocketAddr,
     ) -> Result<Vec<u8>, String> {
         if let Some(filename) = &self.filename {
             let mut response =
@@ -59,6 +66,7 @@ mod file_not_found_test {
     use std::fs;
     use std::fs::File;
     use std::io::prelude::*;
+    use std::net::{IpAddr, Ipv4Addr};
     use std::time::Duration;
 
     use application_layer::http::response;
@@ -75,18 +83,22 @@ mod file_not_found_test {
             server_port: 4040,
             tcp_limit: 1024,
         };
+        let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
         let mut responder = Responder::new();
         assert!(responder.matches(
             &request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.0").unwrap(),
-            &config
+            &config,
+            &socket
         ));
         assert!(responder.matches(
             &request::Message::from_tcp_stream(b"GET /index3.htm HTTP/1.0").unwrap(),
-            &config
+            &config,
+            &socket
         ));
         assert!(responder.matches(
             &request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.1").unwrap(),
-            &config
+            &config,
+            &socket
         ));
 
         let config = Config {
@@ -101,7 +113,8 @@ mod file_not_found_test {
         let mut responder = Responder::new();
         assert!(!responder.matches(
             &request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.0").unwrap(),
-            &config
+            &config,
+            &socket
         ));
     }
 
@@ -116,6 +129,7 @@ mod file_not_found_test {
             server_port: 4040,
             tcp_limit: 1024,
         };
+        let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
         let mut responder = Responder::new();
 
         let filename = "html/404.htm";
@@ -130,7 +144,7 @@ mod file_not_found_test {
         let request =
             request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.1\r\n\r\n").unwrap();
 
-        let matches = responder.matches(&request, &config);
+        let matches = responder.matches(&request, &config, &socket);
         assert!(matches);
 
         let mut headers: HashMap<String, String> = HashMap::new();
@@ -167,7 +181,7 @@ mod file_not_found_test {
             response_body.into_bytes(),
         ).to_bytes();
 
-        let given_response = responder.respond(&request, &config).unwrap();
+        let given_response = responder.respond(&request, &config, &socket).unwrap();
         assert_eq!(expected_response, given_response);
     }
 }

@@ -13,6 +13,7 @@ use std::time::SystemTime;
 
 use chrono::offset::Utc;
 use chrono::{DateTime, TimeZone};
+use std::net::SocketAddr;
 
 use application_layer::http::request;
 use application_layer::http::response;
@@ -248,7 +249,12 @@ impl Responder {
 }
 
 impl ResponderInterface for Responder {
-    fn matches(&mut self, request_message: &request::Message, config: &Config) -> bool {
+    fn matches(
+        &mut self,
+        request_message: &request::Message,
+        config: &Config,
+        _socket: &SocketAddr,
+    ) -> bool {
         if let Some(filename) = Responder::get_matching_filename(&request_message, &config) {
             self.filename = Some(filename);
             return true;
@@ -261,6 +267,7 @@ impl ResponderInterface for Responder {
         &self,
         request_message: &request::Message,
         config: &Config,
+        _socket: &SocketAddr,
     ) -> Result<Vec<u8>, String> {
         // Does filename exist?
         if let Some(filename) = &self.filename {
@@ -276,8 +283,10 @@ impl ResponderInterface for Responder {
 #[cfg(test)]
 mod filesystem_test {
     use super::*;
-    use response::tcp::http;
+    use std::net::{IpAddr, Ipv4Addr};
     use std::str;
+
+    use response::tcp::http;
 
     #[test]
     fn matches() {
@@ -291,14 +300,17 @@ mod filesystem_test {
             tcp_limit: 1024,
         };
 
+        let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
         let mut responder = Responder::new();
         assert!(responder.matches(
             &request::Message::from_tcp_stream(b"GET / HTTP/1.0").unwrap(),
-            &config
+            &config,
+            &socket
         ));
         assert!(responder.matches(
             &request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.0").unwrap(),
-            &config
+            &config,
+            &socket
         ));
 
         // POST request with random header and null bytes
@@ -308,20 +320,24 @@ mod filesystem_test {
         request.push(0);
         assert!(responder.matches(
             &request::Message::from_tcp_stream(&request).unwrap(),
-            &config
+            &config,
+            &socket
         ));
 
         assert!(!responder.matches(
             &request::Message::from_tcp_stream(b"GET /../README.md HTTP/1.0").unwrap(),
-            &config
+            &config,
+            &socket
         ));
         assert!(!responder.matches(
             &request::Message::from_tcp_stream(b"GET /.DS_Store HTTP/1.0").unwrap(),
-            &config
+            &config,
+            &socket
         ));
         assert!(!responder.matches(
             &request::Message::from_tcp_stream(b"GET /test.htm HTTP/1.1").unwrap(),
-            &config
+            &config,
+            &socket
         ));
     }
 
@@ -337,7 +353,7 @@ mod filesystem_test {
             tcp_limit: 1024,
         };
         let mut responder = Responder::new();
-
+        let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
         let filename = "html/index.htm";
 
         let mut file = File::open(&filename).unwrap();
@@ -348,7 +364,7 @@ mod filesystem_test {
         file.read_to_string(&mut response_body).unwrap();
 
         let request = request::Message::from_tcp_stream(b"GET / HTTP/1.1\r\n\r\n").unwrap();
-        let matches = responder.matches(&request, &config);
+        let matches = responder.matches(&request, &config, &socket);
         assert!(matches);
 
         let mut headers: HashMap<String, String> = HashMap::new();
@@ -383,7 +399,7 @@ mod filesystem_test {
             response_body.into_bytes(),
         ).to_bytes();
 
-        let given_response = responder.respond(&request, &config).unwrap();
+        let given_response = responder.respond(&request, &config, &socket).unwrap();
         assert_eq!(expected_response, given_response);
 
         // Matching If Modified Since
@@ -427,7 +443,7 @@ mod filesystem_test {
                 );
                 let request = request::Message::from_tcp_stream(request_string.as_bytes()).unwrap();
 
-                let given_response = responder.respond(&request, &config).unwrap();
+                let given_response = responder.respond(&request, &config, &socket).unwrap();
                 println!(
                     "request: {}, response: {:?}",
                     request_string,
@@ -480,7 +496,7 @@ mod filesystem_test {
                     Responder::get_metadata_modified_as_rfc7231(last_modified - duration)
                 );
                 let request = request::Message::from_tcp_stream(request_string.as_bytes()).unwrap();
-                let given_response = responder.respond(&request, &config).unwrap();
+                let given_response = responder.respond(&request, &config, &socket).unwrap();
 
                 println!(
                     "request: {}, response: {:?}, expected response: {:?}",
@@ -532,7 +548,7 @@ mod filesystem_test {
                     response_body,
                 ).to_bytes();
 
-                let given_response = responder.respond(&request, &config).unwrap();
+                let given_response = responder.respond(&request, &config, &socket).unwrap();
                 assert_eq!(expected_response, given_response);
             }
         }
@@ -581,7 +597,7 @@ mod filesystem_test {
                     Responder::get_modified_hash(&last_modified)
                 );
                 let request = request::Message::from_tcp_stream(request_string.as_bytes()).unwrap();
-                let given_response = responder.respond(&request, &config).unwrap();
+                let given_response = responder.respond(&request, &config, &socket).unwrap();
 
                 println!(
                     "request: {}, response: {:?}, expected response: {:?}",
