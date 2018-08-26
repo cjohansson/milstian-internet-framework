@@ -73,10 +73,8 @@ impl Dispatcher {
                     }
                 }
             }
-            // TODO Add more application layer protocols here
 
             if !response.is_empty() {
-                // Flush HTTP response
                 match stream.write(&response) {
                     Ok(_) => {
                         if let Err(error) = stream.flush() {
