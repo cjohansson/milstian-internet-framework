@@ -1,5 +1,6 @@
 use std::net::TcpListener;
 
+use response::tcp::http::{error, file_not_found, filesystem, ResponderInterface};
 use response::tcp::Dispatcher;
 use thread::Pool;
 use Config;
@@ -19,9 +20,16 @@ impl TCP {
                 loop {
                     match listener.accept() {
                         Ok((stream, socket)) => {
-                            let config_copy = config.clone();
+                            let config = config.clone();
+                            let responders: Vec<
+                                Box<ResponderInterface + Send>,
+                            > = vec![
+                                Box::new(filesystem::Responder::new()),
+                                Box::new(file_not_found::Responder::new()),
+                                Box::new(error::Responder::new()),
+                            ];
                             pool.execute(move || {
-                                Dispatcher::http(stream, socket, config_copy);
+                                Dispatcher::http(stream, socket, config, responders);
                             });
                         }
                         Err(e) => {
@@ -29,7 +37,7 @@ impl TCP {
                         }
                     }
                 }
-            },
+            }
             Err(e) => {
                 panic!(format!("Failed to bind to server and port, error: {}", e));
             }

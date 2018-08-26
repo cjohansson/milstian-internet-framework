@@ -21,6 +21,7 @@ use mime;
 use response::tcp::http::ResponderInterface;
 use Config;
 
+#[derive(Clone)]
 pub struct Responder {
     pub filename: Option<String>,
 }
@@ -285,8 +286,6 @@ mod filesystem_test {
     use super::*;
     use std::net::{IpAddr, Ipv4Addr};
     use std::str;
-
-    use response::tcp::http;
 
     #[test]
     fn matches() {

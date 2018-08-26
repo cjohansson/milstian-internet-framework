@@ -6,6 +6,7 @@ use Config;
 
 use response::tcp::http::ResponderInterface;
 
+#[derive(Clone)]
 pub struct Responder {}
 
 impl Responder {
@@ -98,13 +99,13 @@ mod error_test {
         let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
 
         // Build response body
-        let mut response_body = String::new();
+        let response_body = String::new();
         let request =
             request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.1\r\n\r\n").unwrap();
         let matches = responder.matches(&request, &config, &socket);
         assert!(matches);
 
-        let mut headers: HashMap<String, String> = HashMap::new();
+        let headers: HashMap<String, String> = HashMap::new();
 
         let expected_response = response::Message::new(
             "HTTP/1.1".to_string(),

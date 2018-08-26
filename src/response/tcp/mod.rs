@@ -4,6 +4,8 @@ use std::io::prelude::*;
 use std::net::{SocketAddr, TcpStream};
 use std::str;
 
+use response::tcp::http::ResponderInterface;
+
 use Config;
 
 // This struct should handle the dispatching of requests to a specific response type
@@ -11,7 +13,12 @@ pub struct Dispatcher {}
 
 impl Dispatcher {
     /// This method takes a TcpStream and finds appropriate response handler
-    pub fn http(mut stream: TcpStream, socket: SocketAddr, config: Config) {
+    pub fn http(
+        mut stream: TcpStream,
+        socket: SocketAddr,
+        config: Config,
+        responders: Vec<Box<ResponderInterface + Send>>,
+    ) {
         // Create a array with 512 elements containing the value 0
         let mut temp_buffer = [0; 512];
         let mut buffer: Vec<u8> = Vec::new();
@@ -57,7 +64,7 @@ impl Dispatcher {
             let mut http_dispatcher = http::Dispatcher::new();
 
             if http_dispatcher.matches(&buffer, &config, &socket) {
-                match http_dispatcher.respond(&buffer, &config, &socket) {
+                match http_dispatcher.respond(&buffer, &config, &socket, responders) {
                     Ok(http_response) => {
                         response = http_response;
                     }

@@ -34,14 +34,9 @@ impl Dispatcher {
         _request: &[u8],
         config: &Config,
         socket: &SocketAddr,
+        responders: Vec<Box<ResponderInterface + Send>>,
     ) -> Result<Vec<u8>, String> {
         if let Some(request_message) = &self.request_message {
-            let mut responders: Vec<Box<ResponderInterface>> = vec![
-                Box::new(filesystem::Responder::new()),
-                Box::new(file_not_found::Responder::new()),
-                Box::new(error::Responder::new())
-            ];
-
             for mut responder in responders.into_iter() {
                 if responder.matches(&request_message, &config, &socket) {
                     return responder.respond(&request_message, &config, &socket);
@@ -53,7 +48,26 @@ impl Dispatcher {
     }
 }
 
-trait ResponderInterface {
+pub trait ResponderInterface: ResponderInterfaceCopy {
     fn matches(&mut self, &request::Message, &Config, &SocketAddr) -> bool;
     fn respond(&self, &request::Message, &Config, &SocketAddr) -> Result<Vec<u8>, String>;
+}
+
+pub trait ResponderInterfaceCopy {
+    fn clone_box(&self) -> Box<ResponderInterface>;
+}
+
+impl<T> ResponderInterfaceCopy for T
+where
+    T: 'static + ResponderInterface + Clone,
+{
+    fn clone_box(&self) -> Box<ResponderInterface> {
+        Box::new(self.clone())
+    }
+}
+
+impl Clone for Box<ResponderInterface> {
+    fn clone(&self) -> Box<ResponderInterface> {
+        self.clone_box()
+    }
 }

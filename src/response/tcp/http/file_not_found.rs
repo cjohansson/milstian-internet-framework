@@ -6,6 +6,7 @@ use response::tcp::http::filesystem;
 use response::tcp::http::ResponderInterface;
 use Config;
 
+#[derive(Clone)]
 pub struct Responder {
     pub filename: Option<String>,
 }
