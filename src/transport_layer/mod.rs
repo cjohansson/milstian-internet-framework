@@ -1,6 +1,6 @@
 use std::net::TcpListener;
 
-use response::tcp::http::{error, file_not_found, filesystem, ResponderInterface};
+use response::tcp::http::ResponderInterface;
 use response::tcp::Dispatcher;
 use thread::Pool;
 use Config;
@@ -9,15 +9,10 @@ pub struct TCP {}
 
 impl TCP {
     /// This method creates a new application based on configuration
-    pub fn http(config: Result<Config, String>) {
+    pub fn http(config: Result<Config, String>, responders: Vec<Box<ResponderInterface + Send>>) {
         let config = config.expect("Missing configuration!");
         let path = format!("{}:{}", &config.server_host, &config.server_port);
         let listener = TcpListener::bind(&path);
-        let responders: Vec<Box<ResponderInterface + Send>> = vec![
-            Box::new(filesystem::Responder::new()),
-            Box::new(file_not_found::Responder::new()),
-            Box::new(error::Responder::new()),
-        ];
 
         match listener {
             Ok(listener) => {

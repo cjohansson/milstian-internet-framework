@@ -6,9 +6,11 @@ use std::path::PathBuf;
 
 mod application_layer;
 mod mime;
-mod response;
+pub mod response;
 mod thread;
 mod transport_layer;
+
+use response::tcp::http::ResponderInterface;
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -131,7 +133,10 @@ mod config_test {
 pub struct Application;
 
 impl Application {
-    pub fn tcp_http(config: Result<Config, String>) {
-        transport_layer::TCP::http(config)
+    pub fn tcp_http(
+        config: Result<Config, String>,
+        responders: Vec<Box<ResponderInterface + Send>>,
+    ) {
+        transport_layer::TCP::http(config, responders)
     }
 }
