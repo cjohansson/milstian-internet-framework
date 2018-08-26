@@ -25,6 +25,10 @@ pub struct Responder {
 }
 
 impl Responder {
+    pub fn new() -> Responder {
+        Responder { filename: None }
+    }
+
     pub fn get_metadata_modified_as_rfc7231(modified: SystemTime) -> String {
         let datetime: DateTime<Utc> = modified.into();
         format!("{}", datetime.format("%a, %d %b %Y %H:%M:%S GMT"))
@@ -244,10 +248,6 @@ impl Responder {
 }
 
 impl ResponderInterface for Responder {
-    fn new() -> Responder {
-        Responder { filename: None }
-    }
-
     fn matches(&mut self, request_message: &request::Message, config: &Config) -> bool {
         if let Some(filename) = Responder::get_matching_filename(&request_message, &config) {
             self.filename = Some(filename);

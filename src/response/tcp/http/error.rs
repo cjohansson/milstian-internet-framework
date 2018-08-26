@@ -7,11 +7,13 @@ use response::tcp::http::ResponderInterface;
 
 pub struct Responder {}
 
-impl ResponderInterface for Responder {
-    fn new() -> Responder {
+impl Responder {
+    pub fn new() -> Responder {
         Responder {}
     }
+}
 
+impl ResponderInterface for Responder {
     fn matches(&mut self, _request_message: &request::Message, _config: &Config) -> bool {
         true
     }

@@ -9,11 +9,13 @@ pub struct Responder {
     pub filename: Option<String>,
 }
 
-impl ResponderInterface for Responder {
-    fn new() -> Responder {
+impl Responder {
+    pub fn new() -> Responder {
         Responder { filename: None }
     }
+}
 
+impl ResponderInterface for Responder {
     fn matches(&mut self, _request_message: &request::Message, config: &Config) -> bool {
         let filename = format!(
             "{}/{}",
