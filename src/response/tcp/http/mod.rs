@@ -54,20 +54,20 @@ pub trait ResponderInterface: ResponderInterfaceCopy {
 }
 
 pub trait ResponderInterfaceCopy {
-    fn clone_box(&self) -> Box<ResponderInterface>;
+    fn clone_box(&self) -> Box<ResponderInterface + Send>;
 }
 
 impl<T> ResponderInterfaceCopy for T
 where
-    T: 'static + ResponderInterface + Clone,
+    T: 'static + ResponderInterface + Clone + Send,
 {
-    fn clone_box(&self) -> Box<ResponderInterface> {
+    fn clone_box(&self) -> Box<ResponderInterface + Send> {
         Box::new(self.clone())
     }
 }
 
-impl Clone for Box<ResponderInterface> {
-    fn clone(&self) -> Box<ResponderInterface> {
+impl Clone for Box<ResponderInterface + Send> {
+    fn clone(&self) -> Box<ResponderInterface + Send> {
         self.clone_box()
     }
 }

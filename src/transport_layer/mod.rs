@@ -13,6 +13,11 @@ impl TCP {
         let config = config.expect("Missing configuration!");
         let path = format!("{}:{}", &config.server_host, &config.server_port);
         let listener = TcpListener::bind(&path);
+        let responders: Vec<Box<ResponderInterface + Send>> = vec![
+            Box::new(filesystem::Responder::new()),
+            Box::new(file_not_found::Responder::new()),
+            Box::new(error::Responder::new()),
+        ];
 
         match listener {
             Ok(listener) => {
@@ -21,13 +26,7 @@ impl TCP {
                     match listener.accept() {
                         Ok((stream, socket)) => {
                             let config = config.clone();
-                            let responders: Vec<
-                                Box<ResponderInterface + Send>,
-                            > = vec![
-                                Box::new(filesystem::Responder::new()),
-                                Box::new(file_not_found::Responder::new()),
-                                Box::new(error::Responder::new()),
-                            ];
+                            let responders = responders.clone();
                             pool.execute(move || {
                                 Dispatcher::http(stream, socket, config, responders);
                             });
