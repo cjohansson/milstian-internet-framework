@@ -57,14 +57,18 @@ fn main() {
 }
 ```
 
-## Web-server Benchmark
+## HTTP-server benchmark
 
-**Using Apache Benchmark**
+### Static request
+
+#### Using Apache Benchmark
 
 ``` bash
 process 1: cargo run localhost 8888 10 index.htm ./html/ 404.htm 1024
 process 2: ab -n 10000 -c 10 http://localhost:8888/
 ```
+
+**Expected mean:** 4ms
 
 ## License
 
