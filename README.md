@@ -1,6 +1,6 @@
-# Milstian - A Rust Web Framework
+# Milstian - Rust Internet Framework
 
-![Milstian Logo](https://raw.githubusercontent.com/cjohansson/milstian-rust-web-framework/master/html/img/logo1-modified.jpg)
+![Milstian Logo](https://raw.githubusercontent.com/cjohansson/milstian-rust-internet-framework/master/html/img/logo1-modified.jpg)
 
 In progress, primarily used for learning Rust programming.
 
@@ -57,6 +57,14 @@ fn main() {
 }
 ```
 
+## Web-server Benchmark
+
+**Using Apache Benchmark**
+
+``` bash
+process 1: cargo run localhost 8888 10 index.htm ./html/ 404.htm 1024
+process 2: ab -n 10000 -c 10 http://localhost:8888/
+```
 
 ## License
 
