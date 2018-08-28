@@ -48,6 +48,7 @@ impl ResponderInterface for Responder {
                 &request_message.request_line.protocol,
             );
             let mut headers: HashMap<String, String> = HashMap::new();
+            headers.insert("Content-Type".to_string(), "text/plain".to_string());
             return Ok(response::Message::new(
                 protocol.to_string(),
                 "200 OK".to_string(),

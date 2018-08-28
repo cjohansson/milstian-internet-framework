@@ -156,10 +156,10 @@ impl Application {
         custom: Box<ResponderInterface + Send>
     ) {
         let responders: Vec<Box<ResponderInterface + Send>> = vec![
+            custom,
             Box::new(filesystem::Responder::new()),
             Box::new(file_not_found::Responder::new()),
             Box::new(error::Responder::new()),
-            custom
         ];
         transport_layer::TCP::http(config, responders)
     }
