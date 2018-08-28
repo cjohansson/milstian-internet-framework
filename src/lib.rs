@@ -1,8 +1,8 @@
-mod application_layer;
-mod mime;
+pub mod application_layer;
+pub mod mime;
 pub mod response;
 mod thread;
-mod transport_layer;
+pub mod transport_layer;
 
 extern crate chrono;
 
