@@ -102,7 +102,7 @@ fn main() {
 
 ## HTTP-server benchmark
 
-### Static request
+### Legacy responders
 
 #### Using Apache Benchmark
 
@@ -112,6 +112,10 @@ process 2: ab -n 10000 -c 10 http://localhost:8888/
 ```
 
 **Expected mean:** 4ms
+
+### Legacy responders with a custom basic dynamic response
+
+TODO
 
 ## License
 
