@@ -38,22 +38,30 @@ This project is based on the programming exercise *Building a multithreaded web 
 * HTTP file not found file
 * Maximum TCP request size
 
-## Create application with legacy responders
+## Example application using legacy responders
 
 ``` rust
 extern crate milstian;
+
 use milstian::{Application, Config};
+
 fn main() {
-    Application::tcp_http_with_legacy_responders(Config::from_env());
+    Application::tcp_http_with_legacy_responders(
+        Config::from_env(),
+    );
 }
 ```
 
-## Create TCP-HTTP application with legacy and custom responders
+## Example TCP-HTTP application with legacy responders and a custom responder
 
 ``` rust
 extern crate milstian;
+
+use std::collections::HashMap;
 use std::net::SocketAddr;
+
 use milstian::application_layer::http::request;
+use milstian::application_layer::http::response;
 use milstian::response::tcp::http::ResponderInterface;
 use milstian::{Application, Config};
 
@@ -71,20 +79,42 @@ impl Responder {
 impl ResponderInterface for Responder {
     fn matches(
         &mut self,
-        _request_message: &request::Message,
+        request_message: &request::Message,
         _config: &Config,
         _socket: &SocketAddr,
     ) -> bool {
-        false
+        match request_message.request_line.query_arguments.get("test") {
+            Some(value) => {
+                self.route = Some(value.clone());
+                return true;
+            },
+            None => {
+                return false;
+            }
+        }
     }
 
     fn respond(
         &self,
-        _request_message: &request::Message,
+        request_message: &request::Message,
         _config: &Config,
         _socket: &SocketAddr,
     ) -> Result<Vec<u8>, String> {
-        Err("No result".to_string())
+        if let Some(route) = &self.route {
+            let protocol = request::Message::get_protocol_text(
+                &request_message.request_line.protocol,
+            );
+            let mut headers: HashMap<String, String> = HashMap::new();
+            headers.insert("Content-Type".to_string(), "text/plain".to_string());
+            return Ok(response::Message::new(
+                protocol.to_string(),
+                "200 OK".to_string(),
+                headers,
+                format!("Was here: {}", route).as_bytes().to_vec(),
+            ).to_bytes());
+        } else {
+            Err("No result".to_string())
+        }
     }
 }
 
