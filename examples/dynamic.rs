@@ -30,7 +30,7 @@ impl ResponderInterface for Responder {
             Some(value) => {
                 self.route = Some(value.clone());
                 return true;
-            },
+            }
             None => {
                 return false;
             }
@@ -44,9 +44,8 @@ impl ResponderInterface for Responder {
         _socket: &SocketAddr,
     ) -> Result<Vec<u8>, String> {
         if let Some(route) = &self.route {
-            let protocol = request::Message::get_protocol_text(
-                &request_message.request_line.protocol,
-            );
+            let protocol =
+                request::Message::get_protocol_text(&request_message.request_line.protocol);
             let mut headers: HashMap<String, String> = HashMap::new();
             headers.insert("Content-Type".to_string(), "text/plain".to_string());
             return Ok(response::Message::new(
@@ -64,6 +63,6 @@ impl ResponderInterface for Responder {
 fn main() {
     Application::tcp_http_with_legacy_and_custom_responders(
         Config::from_env(),
-        Box::new(Responder::new())
+        Box::new(Responder::new()),
     );
 }
