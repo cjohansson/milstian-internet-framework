@@ -42,21 +42,17 @@ This project is based on the programming exercise *Building a multithreaded web 
 
 ``` rust
 extern crate milstian;
-
 use milstian::{Application, Config};
-
 fn main() {
-    Application::tcp_http_legacy_responders(Config::from_env());
+    Application::tcp_http_with_legacy_responders(Config::from_env());
 }
 ```
 
-## Create application with legacy responders and a custom responder
+## Create TCP-HTTP application with legacy and custom responders
 
 ``` rust
 extern crate milstian;
-
 use std::net::SocketAddr;
-
 use milstian::application_layer::http::request;
 use milstian::response::tcp::http::ResponderInterface;
 use milstian::{Application, Config};
@@ -93,29 +89,34 @@ impl ResponderInterface for Responder {
 }
 
 fn main() {
-    Application::tcp_http_legacy_and_custom_responder(
+    Application::tcp_http_with_legacy_and_custom_responders(
         Config::from_env(),
         Box::new(Responder::new())
     );
 }
 ```
 
-## HTTP-server benchmark
+## TCP-HTTP server benchmark
 
 ### Legacy responders
 
-#### Using Apache Benchmark
+#### Using Apache Benchmark (AB)
 
 ``` bash
-process 1: cargo run localhost 8888 10 index.htm ./html/ 404.htm 1024
-process 2: ab -n 10000 -c 10 http://localhost:8888/
+process 1: $ cargo run --example static localhost 8888 10 index.htm ./html/ 404.htm 1024
+process 2: $ ab -n 10000 -c 10 http://localhost:8888/
 ```
 
 **Expected mean:** 4ms
 
 ### Legacy responders with a custom basic dynamic response
 
-TODO
+``` bash
+process 1: $ cargo run --example dynamic localhost 8888 10 index.htm ./html/ 404.htm 1024
+process 2: $ ab -n 10000 -c 10 http://localhost:8888/
+```
+
+**Expected mean:** TODO
 
 ## License
 

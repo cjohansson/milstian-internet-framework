@@ -140,7 +140,7 @@ impl Application {
         transport_layer::TCP::http(config, responders)
     }
 
-    pub fn tcp_http_legacy_responders(
+    pub fn tcp_http_with_legacy_responders(
         config: Result<Config, String>
     ) {
         let responders: Vec<Box<ResponderInterface + Send>> = vec![
@@ -151,7 +151,7 @@ impl Application {
         transport_layer::TCP::http(config, responders)
     }
 
-    pub fn tcp_http_legacy_and_custom_responder(
+    pub fn tcp_http_with_legacy_and_custom_responders(
         config: Result<Config, String>,
         custom: Box<ResponderInterface + Send>
     ) {
