@@ -1,16 +1,16 @@
-extern crate chrono;
-
-use std::env;
-use std::fs;
-use std::path::PathBuf;
-
 mod application_layer;
 mod mime;
 pub mod response;
 mod thread;
 mod transport_layer;
 
-use response::tcp::http::ResponderInterface;
+extern crate chrono;
+
+use std::env;
+use std::fs;
+use std::path::PathBuf;
+
+use response::tcp::http::{error, file_not_found, filesystem, ResponderInterface};
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -139,4 +139,29 @@ impl Application {
     ) {
         transport_layer::TCP::http(config, responders)
     }
+
+    pub fn tcp_http_legacy_responders(
+        config: Result<Config, String>
+    ) {
+        let responders: Vec<Box<ResponderInterface + Send>> = vec![
+            Box::new(filesystem::Responder::new()),
+            Box::new(file_not_found::Responder::new()),
+            Box::new(error::Responder::new()),
+        ];
+        transport_layer::TCP::http(config, responders)
+    }
+
+    pub fn tcp_http_legacy_and_custom_responder(
+        config: Result<Config, String>,
+        custom: Box<ResponderInterface + Send>
+    ) {
+        let responders: Vec<Box<ResponderInterface + Send>> = vec![
+            Box::new(filesystem::Responder::new()),
+            Box::new(file_not_found::Responder::new()),
+            Box::new(error::Responder::new()),
+            custom
+        ];
+        transport_layer::TCP::http(config, responders)
+    }
+
 }

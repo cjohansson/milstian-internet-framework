@@ -38,24 +38,21 @@ This project is based on the programming exercise *Building a multithreaded web 
 * HTTP file not found file
 * Maximum TCP request size
 
-## Create application
+## Create application with legacy responders
 
 ``` rust
 extern crate milstian;
 
-use milstian::response::tcp::http::{error, file_not_found, filesystem, ResponderInterface};
 use milstian::{Application, Config};
 
 fn main() {
-    let responders: Vec<Box<ResponderInterface + Send>> = vec![
-        Box::new(filesystem::Responder::new()),
-        Box::new(file_not_found::Responder::new()),
-        Box::new(error::Responder::new()),
-    ];
-
-    Application::tcp_http(Config::from_env(), responders);
+    Application::tcp_http_legacy_responders(Config::from_env());
 }
 ```
+
+## Create application with legacy responders and a custom responder
+
+TODO
 
 ## HTTP-server benchmark
 
