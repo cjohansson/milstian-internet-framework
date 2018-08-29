@@ -38,7 +38,7 @@ This project is based on the programming exercise *Building a multithreaded web 
 * HTTP file not found file
 * Maximum TCP request size
 
-## Example application using legacy responders
+## Example static TCP-HTTP application
 
 ``` rust
 extern crate milstian;
@@ -50,7 +50,7 @@ fn main() {
 }
 ```
 
-## Example TCP-HTTP application with legacy responders and a custom responder
+## Example simple dynamic TCP-HTTP web application
 
 ``` rust
 extern crate milstian;
@@ -125,7 +125,7 @@ fn main() {
 
 ## TCP-HTTP server benchmark
 
-### Legacy responders
+### Static responders
 
 #### Using Apache Benchmark (AB)
 
@@ -136,7 +136,7 @@ process 2: $ ab -n 10000 -c 10 http://localhost:8888/
 
 **Expected mean:** 4ms
 
-### Legacy responders with a custom basic dynamic response
+### Simple dynamic response
 
 ``` bash
 process 1: $ cargo run --example dynamic localhost 8888 10 index.htm ./html/ 404.htm 1024
