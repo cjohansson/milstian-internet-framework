@@ -125,9 +125,9 @@ fn main() {
 
 ## TCP-HTTP server benchmark
 
-### Static responders
+Using Apache Benchmark (AB).
 
-#### Using Apache Benchmark (AB)
+### Static response
 
 ``` bash
 process 1: $ cargo run --example static localhost 8888 10 index.htm ./html/ 404.htm 1024
