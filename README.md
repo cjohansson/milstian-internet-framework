@@ -50,7 +50,7 @@ fn main() {
 }
 ```
 
-## Example simple dynamic TCP-HTTP web application
+## Example simple dynamic TCP-HTTP application
 
 ``` rust
 extern crate milstian;
@@ -134,7 +134,7 @@ process 1: $ cargo run --example static localhost 8888 10 index.htm ./html/ 404.
 process 2: $ ab -n 10000 -c 10 http://localhost:8888/
 ```
 
-**Expected mean:** 4ms
+*Expected mean:* 4ms
 
 ### Simple dynamic response
 
@@ -143,7 +143,7 @@ process 1: $ cargo run --example dynamic localhost 8888 10 index.htm ./html/ 404
 process 2: $ ab -n 10000 -c 10 http://localhost:8888/?test=abcdef
 ```
 
-**Expected mean:** 2ms
+*Expected mean:* 2ms
 
 ## License
 
