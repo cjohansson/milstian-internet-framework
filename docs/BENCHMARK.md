@@ -24,4 +24,4 @@ process 2: $ ab -n 10000 -c 10 http://localhost:8888/?test=abcdef
 
 
 
-[Back to start](../../../)
+[Back to start](../)

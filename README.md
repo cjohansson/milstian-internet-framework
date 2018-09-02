@@ -124,8 +124,8 @@ fn main() {
 
 ## Docs
 
-* [Benchmark](blob/master/docs/BENCHMARK.md)
-* [Issues](blob/master/docs/ISSUES.md)
+* [Benchmark](docs/BENCHMARK.md)
+* [Issues](docs/ISSUES.md)
 
 ## License
 
