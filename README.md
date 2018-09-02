@@ -124,8 +124,8 @@ fn main() {
 
 ## Docs
 
-* [Benchmark](https://github.com/cjohansson/milstian-rust-internet-framework/blob/master/docs/BENCHMARK.md)
-* [Issues](https://github.com/cjohansson/milstian-rust-internet-framework/blob/master/docs/ISSUES.md)
+* [Benchmark](blob/master/docs/BENCHMARK.md)
+* [Issues](blob/master/docs/ISSUES.md)
 
 ## License
 
