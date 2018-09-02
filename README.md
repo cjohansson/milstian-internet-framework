@@ -7,8 +7,7 @@ In progress, primarily used for learning Rust programming.
 This project is based on the programming exercise *Building a multithreaded web server* from the book *The Rust Programming Language* (*no starch press 2018*) and inspired by the *Aomebo Web Framework for PHP*.
 
 ## Major goal
-* Easy to make any kind of website with it
-* Websites are scaleable, fast and robust
+* Easy to make any kind of website with it that is scaleable, fast and robust
 
 ## Goals
 * Concurrent Internet-server with integrated HTTP and HTTP over TLS via TCP/IP support
@@ -27,7 +26,7 @@ This project is based on the programming exercise *Building a multithreaded web 
 ## Run local server
 
 * visit project repository root
-* Run `cargo run localhost 8888 10 index.htm ./html/ 404.htm 1024`
+* Run `cargo run --example static localhost 8888 10 index.htm ./html/ 404.htm 1024`
 
 **Parameters are:**
 * TCP Hostname
@@ -123,27 +122,10 @@ fn main() {
 }
 ```
 
-## TCP-HTTP server benchmark
+## Docs
 
-Using Apache Benchmark (AB).
-
-### Static response
-
-``` bash
-process 1: $ cargo run --example static localhost 8888 10 index.htm ./html/ 404.htm 1024
-process 2: $ ab -n 10000 -c 10 http://localhost:8888/
-```
-
-*Expected mean:* 4ms
-
-### Simple dynamic response
-
-``` bash
-process 1: $ cargo run --example dynamic localhost 8888 10 index.htm ./html/ 404.htm 1024
-process 2: $ ab -n 10000 -c 10 http://localhost:8888/?test=abcdef
-```
-
-*Expected mean:* 2ms
+* [Benchmark](https://raw.githubusercontent.com/cjohansson/milstian-rust-internet-framework/master/docs/BENCHMARK.md)
+* [Issues](https://raw.githubusercontent.com/cjohansson/milstian-rust-internet-framework/master/docs/ISSUES.md)
 
 ## License
 
