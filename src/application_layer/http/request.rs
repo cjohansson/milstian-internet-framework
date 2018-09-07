@@ -37,6 +37,13 @@ pub enum Method {
     Trace,
 }
 
+// TODO Implement this
+#[derive(Debug)]
+pub enum ContentType {
+    MultiPart,
+    SinglePart,
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum Protocol {
     Invalid,
@@ -169,14 +176,28 @@ impl Message {
         Message::get_query_args_from_string(body)
     }
 
-    pub fn get_header_field(line: &str) -> Option<(String, String)> {
+    pub fn get_header_field(line: &str) -> Option<(String, String, HashMap<String, String>)> {
         let line = line.trim();
         if !line.is_empty() {
             let parts: Vec<&str> = line.splitn(2, ":").collect();
             if parts.len() == 2 {
                 let header_key = parts.get(0)?.trim().to_string();
                 let header_value = parts.get(1)?.trim().to_string();
-                return Some((header_key, header_value));
+
+                let mut params: HashMap<String, String> = HashMap::new();
+                let header_value_clone = header_value.clone();
+                let params_blocks: Vec<&str> = header_value_clone.split(";").collect();
+                if params_blocks.len() > 1 {
+                    for params_block in params_blocks.iter() {
+                        let params_key_pair: Vec<&str> = params_block.splitn(2, "=").collect();
+                        if params_key_pair.len() == 2 {
+                            let param_key = params_key_pair.get(0)?.trim().to_string();
+                            let param_value = params_key_pair.get(1)?.trim().to_string();
+                            params.insert(param_key, param_value);
+                        }
+                    }
+                }
+                return Some((header_key, header_value, params));
             }
         }
         None
@@ -292,7 +313,8 @@ impl Message {
                             if line.trim().is_empty() {
                                 section = Section::MessageBody;
                             } else {
-                                let (header_key, header_value) = Message::get_header_field(line)?;
+                                let (header_key, header_value, _) = Message::get_header_field(line)?;
+                                // TODO Must include params here somehow
                                 headers.insert(header_key, header_value);
                             }
                         }
@@ -368,7 +390,7 @@ mod request_test {
         );
         assert!(response.is_some());
 
-        let (key, value) = response.unwrap();
+        let (key, value, _) = response.unwrap();
         assert_eq!(key, "User-Agent".to_string());
         assert_eq!(
             value,
@@ -378,7 +400,7 @@ mod request_test {
         let response = Message::get_header_field("Cache-Control: no-cache \r\n");
         assert!(response.is_some());
 
-        let (key, value) = response.unwrap();
+        let (key, value, _) = response.unwrap();
         assert_eq!(key, "Cache-Control".to_string());
         assert_eq!(value, "no-cache".to_string());
 
@@ -387,6 +409,15 @@ mod request_test {
 
         let response = Message::get_header_field("");
         assert!(response.is_none());
+
+        let response = Message::get_header_field(
+            "Content-Type: multipart/form-data; boundary=---------------------------208201381313076108731815782760\r\n",
+        );
+        assert!(response.is_some());
+        let (key, value, params) = response.unwrap();
+        assert_eq!(key, "Content-Type".to_string());
+        assert_eq!(value, "multipart/form-data; boundary=---------------------------208201381313076108731815782760".to_string());
+        assert_eq!(params.get(&"boundary".to_string()).unwrap(), "---------------------------208201381313076108731815782760");
     }
 
     #[test]
