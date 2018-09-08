@@ -9,7 +9,7 @@ use std::str;
 #[derive(Debug)]
 pub struct Message {
     pub body: HashMap<String, String>,
-    pub headers: HashMap<String, String>,
+    pub headers: HashMap<String, HeaderValueParts>,
     pub request_line: Line,
 }
 
@@ -38,10 +38,62 @@ pub enum Method {
 }
 
 // TODO Implement this
-#[derive(Debug)]
 pub enum ContentType {
     MultiPart,
     SinglePart,
+}
+
+#[derive(Debug)]
+pub enum HeaderValuePart {
+    Single(String),
+    KeyValue(String, String),
+}
+
+#[derive(Debug)]
+pub struct HeaderValueParts {
+    parts: Vec<Vec<HeaderValuePart>>,
+}
+
+impl HeaderValueParts {
+    pub fn get_key_value(&self, key: &str) -> Option<String> {
+        for params_block in self.parts.iter() {
+            for params_subblock in params_block.iter() {
+                if let HeaderValuePart::KeyValue(key_value_key, key_value_value) = params_subblock {
+                    if key_value_key == key {
+                        return Some(key_value_value.to_string());
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    pub fn to_string(&self) -> String {
+        let mut output = String::new();
+        let mut params_block_count = 0;
+        for params_block in self.parts.iter() {
+            if params_block_count > 0 {
+                output.push_str("; ");
+            }
+            let mut params_subblock_count = 0;
+            for params_subblock in params_block.iter() {
+                if params_subblock_count > 0 {
+                    output.push_str(", ");
+                }
+                match params_subblock {
+                    HeaderValuePart::Single(string) => {
+                        output.push_str(&string);
+                    }
+                    HeaderValuePart::KeyValue(key, value) => {
+                        output.push_str(&format!("{}={}", key, value).to_string());
+                    }
+                }
+                params_subblock_count = params_subblock_count + 1;
+            }
+            params_block_count = params_block_count + 1;
+        }
+        output
+    }
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -176,28 +228,42 @@ impl Message {
         Message::get_query_args_from_string(body)
     }
 
-    pub fn get_header_field(line: &str) -> Option<(String, String, HashMap<String, String>)> {
+    pub fn get_header_field(line: &str) -> Option<(String, HeaderValueParts)> {
         let line = line.trim();
         if !line.is_empty() {
             let parts: Vec<&str> = line.splitn(2, ":").collect();
             if parts.len() == 2 {
                 let header_key = parts.get(0)?.trim().to_string();
                 let header_value = parts.get(1)?.trim().to_string();
+                let mut header_parts: Vec<Vec<HeaderValuePart>> = Vec::new();
 
-                let mut params: HashMap<String, String> = HashMap::new();
-                let header_value_clone = header_value.clone();
-                let params_blocks: Vec<&str> = header_value_clone.split(";").collect();
-                if params_blocks.len() > 1 {
-                    for params_block in params_blocks.iter() {
-                        let params_key_pair: Vec<&str> = params_block.splitn(2, "=").collect();
+                let params_blocks: Vec<&str> = header_value.split(";").collect();
+                for params_block in params_blocks.iter() {
+                    let mut header_value_part: Vec<HeaderValuePart> = Vec::new();
+                    let params_subblocks: Vec<&str> = params_block.split(",").collect();
+                    for params_subblock in params_subblocks.iter() {
+                        let params_subblock_clone = params_subblock.clone();
+                        let params_key_pair: Vec<&str> =
+                            params_subblock_clone.splitn(2, "=").collect();
                         if params_key_pair.len() == 2 {
                             let param_key = params_key_pair.get(0)?.trim().to_string();
                             let param_value = params_key_pair.get(1)?.trim().to_string();
-                            params.insert(param_key, param_value);
+                            header_value_part
+                                .push(HeaderValuePart::KeyValue(param_key, param_value));
+                        } else {
+                            header_value_part
+                                .push(HeaderValuePart::Single(params_subblock.trim().to_string()));
                         }
                     }
+                    header_parts.push(header_value_part);
                 }
-                return Some((header_key, header_value, params));
+
+                return Some((
+                    header_key,
+                    HeaderValueParts {
+                        parts: header_parts,
+                    },
+                ));
             }
         }
         None
@@ -292,7 +358,7 @@ impl Message {
                 // Trim null bytes
                 request = request.trim_matches(char::from(0));
                 // println!("request: {}", request);
-                let mut headers: HashMap<String, String> = HashMap::new();
+                let mut headers: HashMap<String, HeaderValueParts> = HashMap::new();
                 let mut body: HashMap<String, String> = HashMap::new();
                 let mut request_line: Line = Line {
                     method: Method::Invalid,
@@ -313,8 +379,7 @@ impl Message {
                             if line.trim().is_empty() {
                                 section = Section::MessageBody;
                             } else {
-                                let (header_key, header_value, _) = Message::get_header_field(line)?;
-                                // TODO Must include params here somehow
+                                let (header_key, header_value) = Message::get_header_field(line)?;
                                 headers.insert(header_key, header_value);
                             }
                         }
@@ -390,19 +455,19 @@ mod request_test {
         );
         assert!(response.is_some());
 
-        let (key, value, _) = response.unwrap();
+        let (key, value) = response.unwrap();
         assert_eq!(key, "User-Agent".to_string());
         assert_eq!(
-            value,
+            value.to_string(),
             "Mozilla/5.0 (X11; Linux x86_64; rv:12.0) Gecko/20100101 Firefox/12.0".to_string()
         );
 
         let response = Message::get_header_field("Cache-Control: no-cache \r\n");
         assert!(response.is_some());
 
-        let (key, value, _) = response.unwrap();
+        let (key, value) = response.unwrap();
         assert_eq!(key, "Cache-Control".to_string());
-        assert_eq!(value, "no-cache".to_string());
+        assert_eq!(value.to_string(), "no-cache".to_string());
 
         let response = Message::get_header_field("Just various text here\r\n");
         assert!(response.is_none());
@@ -414,10 +479,13 @@ mod request_test {
             "Content-Type: multipart/form-data; boundary=---------------------------208201381313076108731815782760\r\n",
         );
         assert!(response.is_some());
-        let (key, value, params) = response.unwrap();
+        let (key, value) = response.unwrap();
         assert_eq!(key, "Content-Type".to_string());
-        assert_eq!(value, "multipart/form-data; boundary=---------------------------208201381313076108731815782760".to_string());
-        assert_eq!(params.get(&"boundary".to_string()).unwrap(), "---------------------------208201381313076108731815782760");
+        assert_eq!(value.to_string(), "multipart/form-data; boundary=---------------------------208201381313076108731815782760".to_string());
+        assert_eq!(
+            value.get_key_value("boundary").unwrap(),
+            "---------------------------208201381313076108731815782760".to_string()
+        );
     }
 
     #[test]

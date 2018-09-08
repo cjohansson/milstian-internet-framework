@@ -185,7 +185,7 @@ impl Responder {
                                 if let Some(if_none_match) =
                                     request_message.headers.get("If-None-Match")
                                 {
-                                    if if_none_match == &etag {
+                                    if if_none_match.to_string() == etag {
                                         status_code = "304 Not Modified";
                                         response_body = Vec::new();
                                     }
@@ -196,8 +196,9 @@ impl Responder {
                                         request_message.headers.get("If-Modified-Since")
                                     {
                                         if let Some(if_modified_since_systemtime) =
-                                            Responder::get_rfc7231_as_systemtime(if_modified_since)
-                                        {
+                                            Responder::get_rfc7231_as_systemtime(
+                                                &if_modified_since.to_string(),
+                                            ) {
                                             if let Ok(duration) = last_modified
                                                 .duration_since(if_modified_since_systemtime)
                                             {
