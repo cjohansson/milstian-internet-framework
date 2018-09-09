@@ -1,14 +1,20 @@
 use std::collections::HashMap;
 use std::str;
 
-// TODO Should support parsing of different message body encodings
-// TODO Support multi-part message bodies and gzip
+// TODO Support multi-part message bodies
+// TODO Support gzip
 // TODO Support keep-alive
 // TODO Support TLS? Maybe that is at the level below?
 
 #[derive(Debug)]
+pub enum BodyContentType {
+    SinglePart(HashMap<String, String>),
+    MultiPart(HashMap<String, MultiPartValue>),
+}
+
+#[derive(Debug)]
 pub struct Message {
-    pub body: HashMap<String, String>,
+    pub body: BodyContentType,
     pub headers: HashMap<String, HeaderValueParts>,
     pub request_line: Line,
 }
@@ -37,9 +43,8 @@ pub enum Method {
     Trace,
 }
 
-// TODO Implement this
-pub enum ContentType {
-    MultiPart,
+pub enum HeaderContentType {
+    MultiPart(String), // String is multi-part boundary string
     SinglePart,
 }
 
@@ -94,6 +99,12 @@ impl HeaderValueParts {
         }
         output
     }
+}
+
+#[derive(Debug)]
+pub struct MultiPartValue {
+    body: Vec<u8>,
+    headers: HashMap<String, HeaderValueParts>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -194,6 +205,56 @@ impl Message {
         }
     }
 
+    fn get_query_args_from_multipart_string(
+        subject: &str,
+        boundary: &str,
+    ) -> Option<HashMap<String, MultiPartValue>> {
+        let mut args: HashMap<String, MultiPartValue> = HashMap::new();
+        if !subject.is_empty() {
+            let subject_arguments: Vec<&str> = subject.split(boundary).collect();
+
+            // For each bounded object
+            for item in subject_arguments {
+                let mut headers: HashMap<String, HeaderValueParts> = HashMap::new();
+                let mut body: Vec<u8> = Vec::new();
+                let mut section = Section::HeaderFields;
+
+                // For each line within bounded object
+                for mut line in item.lines() {
+                    match section {
+                        Section::HeaderFields => {
+                            if line.trim().is_empty() {
+                                section = Section::MessageBody;
+                            } else {
+                                let (header_key, header_value) = Message::get_header_field(line)?;
+                                headers.insert(header_key, header_value);
+                            }
+                        }
+                        Section::MessageBody => {
+                            body.append(&mut line.as_bytes().to_vec());
+                        }
+                        _ => (),
+                    }
+                }
+
+                // Did we find a name within the content-disposition header?
+                let mut name: String = String::new();
+                if let Some(content_disposition) = headers.get("Content-Disposition") {
+                    if let Some(content_disposition_name) = content_disposition.get_key_value("name") {
+                        name = content_disposition_name.to_string();
+                    }
+                }
+                if !name.is_empty() {
+                    args.insert(name, MultiPartValue { body, headers });
+                }
+            }
+        }
+        if args.len() > 0 {
+            return Some(args);
+        }
+        None
+    }
+
     fn get_query_args_from_string(subject: &str) -> Option<HashMap<String, String>> {
         let mut args: HashMap<String, String> = HashMap::new();
         if !subject.is_empty() {
@@ -223,9 +284,23 @@ impl Message {
         }
     }
 
-    // TODO This associated function should parse body based on content encoding
-    pub fn get_message_body(body: &str) -> Option<HashMap<String, String>> {
-        Message::get_query_args_from_string(body)
+    pub fn get_message_body(
+        body: &str,
+        content_type: &HeaderContentType,
+    ) -> Option<BodyContentType> {
+        match content_type {
+            HeaderContentType::SinglePart => {
+                if let Some(body) = Message::get_query_args_from_string(body) {
+                    return Some(BodyContentType::SinglePart(body));
+                }
+            }
+            HeaderContentType::MultiPart(boundary) => {
+                if let Some(body) = Message::get_query_args_from_multipart_string(body, boundary) {
+                    return Some(BodyContentType::MultiPart(body));
+                }
+            }
+        }
+        None
     }
 
     pub fn get_header_field(line: &str) -> Option<(String, HeaderValueParts)> {
@@ -357,9 +432,8 @@ impl Message {
             if request.is_ascii() {
                 // Trim null bytes
                 request = request.trim_matches(char::from(0));
-                // println!("request: {}", request);
                 let mut headers: HashMap<String, HeaderValueParts> = HashMap::new();
-                let mut body: HashMap<String, String> = HashMap::new();
+                let mut body: BodyContentType = BodyContentType::SinglePart(HashMap::new());
                 let mut request_line: Line = Line {
                     method: Method::Invalid,
                     protocol: Protocol::Invalid,
@@ -389,7 +463,19 @@ impl Message {
                             } else if Message::method_has_request_body(&request_line.method)
                                 != SettingValence::No
                             {
-                                if let Some(body_args) = Message::get_message_body(line) {
+                                // Determine request part type
+                                let mut header_content_type = HeaderContentType::SinglePart;
+                                if let Some(content_type_header) = headers.get("Content-Type") {
+                                    if let Some(boundary) =
+                                        content_type_header.get_key_value("boundary")
+                                    {
+                                        header_content_type =
+                                            HeaderContentType::MultiPart(boundary);
+                                    }
+                                }
+                                if let Some(body_args) =
+                                    Message::get_message_body(line, &header_content_type)
+                                {
                                     body = body_args;
                                 }
                             }
@@ -417,34 +503,37 @@ mod request_test {
 
     #[test]
     fn test_get_message_body() {
-        let response = Message::get_message_body("random=abc&hej=def&def");
+        let content_type = HeaderContentType::SinglePart;
+        let response = Message::get_message_body("random=abc&hej=def&def", &content_type);
         assert!(response.is_some());
 
         let response_unwrapped = response.unwrap();
-        assert_eq!(
-            response_unwrapped
-                .get(&"random".to_string())
-                .unwrap()
-                .to_string(),
-            "abc".to_string()
-        );
-        assert_eq!(
-            response_unwrapped
-                .get(&"hej".to_string())
-                .unwrap()
-                .to_string(),
-            "def".to_string()
-        );
-        assert_eq!(
-            response_unwrapped
-                .get(&"def".to_string())
-                .unwrap()
-                .to_string(),
-            "1".to_string()
-        );
-        assert!(response_unwrapped.get(&"defs".to_string()).is_none());
+        if let BodyContentType::SinglePart(response_unwrapped) = response_unwrapped {
+            assert_eq!(
+                response_unwrapped
+                    .get(&"random".to_string())
+                    .unwrap()
+                    .to_string(),
+                "abc".to_string()
+            );
+            assert_eq!(
+                response_unwrapped
+                    .get(&"hej".to_string())
+                    .unwrap()
+                    .to_string(),
+                "def".to_string()
+            );
+            assert_eq!(
+                response_unwrapped
+                    .get(&"def".to_string())
+                    .unwrap()
+                    .to_string(),
+                "1".to_string()
+            );
+            assert!(response_unwrapped.get(&"defs".to_string()).is_none());
+        }
 
-        let response = Message::get_message_body("");
+        let response = Message::get_message_body("", &content_type);
         assert!(response.is_none());
     }
 
@@ -611,14 +700,12 @@ mod request_test {
                 .to_string(),
             "Random browser".to_string()
         );
-        assert_eq!(
-            response_unwrapped
-                .body
-                .get(&"test".to_string())
-                .unwrap()
-                .to_string(),
-            "abc".to_string()
-        );
+        if let BodyContentType::SinglePart(body) = response_unwrapped.body {
+            assert_eq!(
+                body.get(&"test".to_string()).unwrap().to_string(),
+                "abc".to_string()
+            );
+        }
 
         // Two invalid  requests
         let response = Message::from_tcp_stream(b"RANDOM /stuff HTTP/2.5\r\n");
@@ -630,20 +717,20 @@ mod request_test {
         let response = Message::from_tcp_stream(b"GET / HTTP/2.0\r\n\r\nabc=123");
         assert!(response.is_some());
         let response_unwrapped = response.unwrap();
-        assert_eq!(
-            response_unwrapped
-                .body
-                .get(&"abc".to_string())
-                .unwrap()
-                .to_string(),
-            "123".to_string()
-        );
+        if let BodyContentType::SinglePart(body) = response_unwrapped.body {
+            assert_eq!(
+                body.get(&"abc".to_string()).unwrap().to_string(),
+                "123".to_string()
+            );
+        }
 
         // HEAD requests should not get their message body parsed
         let response = Message::from_tcp_stream(b"HEAD / HTTP/2.0\r\n\r\nabc=123");
         assert!(response.is_some());
         let response_unwrapped = response.unwrap();
-        assert!(response_unwrapped.body.get(&"abc".to_string()).is_none());
+        if let BodyContentType::SinglePart(body) = response_unwrapped.body {
+            assert!(body.get(&"abc".to_string()).is_none());
+        }
 
         let response = Message::from_tcp_stream(b"html/index.html\r\n");
         assert!(response.is_some());
