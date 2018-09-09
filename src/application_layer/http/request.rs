@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::str;
 
-// TODO Support multi-part message bodies
 // TODO Support gzip
 // TODO Support keep-alive
 // TODO Support TLS? Maybe that is at the level below?
@@ -217,11 +216,16 @@ impl Message {
             for item in subject_arguments {
                 let mut headers: HashMap<String, HeaderValueParts> = HashMap::new();
                 let mut body: Vec<u8> = Vec::new();
-                let mut section = Section::HeaderFields;
+                let mut section = Section::Line;
 
                 // For each line within bounded object
                 for mut line in item.lines() {
                     match section {
+                        Section::Line => {
+                            if line.trim().is_empty() {
+                                section = Section::HeaderFields;
+                            }
+                        }
                         Section::HeaderFields => {
                             if line.trim().is_empty() {
                                 section = Section::MessageBody;
@@ -233,15 +237,16 @@ impl Message {
                         Section::MessageBody => {
                             body.append(&mut line.as_bytes().to_vec());
                         }
-                        _ => (),
                     }
                 }
 
                 // Did we find a name within the content-disposition header?
                 let mut name: String = String::new();
                 if let Some(content_disposition) = headers.get("Content-Disposition") {
-                    if let Some(content_disposition_name) = content_disposition.get_key_value("name") {
-                        name = content_disposition_name.to_string();
+                    if let Some(content_disposition_name) =
+                        content_disposition.get_key_value("name")
+                    {
+                        name = content_disposition_name.trim_matches('"').to_string()
                     }
                 }
                 if !name.is_empty() {
@@ -502,7 +507,7 @@ mod request_test {
     use super::*;
 
     #[test]
-    fn test_get_message_body() {
+    fn test_get_message_body_single_part() {
         let content_type = HeaderContentType::SinglePart;
         let response = Message::get_message_body("random=abc&hej=def&def", &content_type);
         assert!(response.is_some());
@@ -531,6 +536,40 @@ mod request_test {
                 "1".to_string()
             );
             assert!(response_unwrapped.get(&"defs".to_string()).is_none());
+        }
+
+        let response = Message::get_message_body("", &content_type);
+        assert!(response.is_none());
+    }
+
+    #[test]
+    fn test_get_message_body_multi_part() {
+        let content_type = HeaderContentType::MultiPart(
+            "-----------------------------208201381313076108731815782760".to_string(),
+        );
+        let response = Message::get_message_body("-----------------------------208201381313076108731815782760\r\nContent-Disposition: form-data; name=\"losen\"\r\n\r\nabc123-----------------------------208201381313076108731815782760\r\nContent-Disposition: form-data; name=\"size\"\r\n\r\nfalse\r\n-----------------------------208201381313076108731815782760--", &content_type);
+        assert!(response.is_some());
+
+        let response_unwrapped = response.unwrap();
+        if let BodyContentType::MultiPart(response_unwrapped) = response_unwrapped {
+            assert_eq!(
+                response_unwrapped.get(&"losen".to_string()).unwrap().body,
+                b"abc123"
+            );
+            assert_eq!(
+                response_unwrapped
+                    .get(&"losen".to_string())
+                    .unwrap()
+                    .headers
+                    .get("Content-Disposition")
+                    .unwrap()
+                    .to_string(),
+                "form-data; name=\"losen\""
+            );
+            assert_eq!(
+                response_unwrapped.get(&"size".to_string()).unwrap().body,
+                b"false"
+            );
         }
 
         let response = Message::get_message_body("", &content_type);
