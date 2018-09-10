@@ -11,3 +11,6 @@ body {
 .wrapper img {
     max-width: 100%;
 }
+form fieldset > div + div {
+    margin-top: 20px;
+}

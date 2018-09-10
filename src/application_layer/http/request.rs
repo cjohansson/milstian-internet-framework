@@ -1,10 +1,6 @@
 use std::collections::HashMap;
 use std::str;
 
-// TODO Support gzip
-// TODO Support keep-alive
-// TODO Support TLS? Maybe that is at the level below?
-
 #[derive(Debug)]
 pub enum BodyContentType {
     SinglePart(HashMap<String, String>),
@@ -42,6 +38,7 @@ pub enum Method {
     Trace,
 }
 
+#[derive(Debug)]
 pub enum HeaderContentType {
     MultiPart(String), // String is multi-part boundary string
     SinglePart,
@@ -482,6 +479,8 @@ impl Message {
                                     Message::get_message_body(line, &header_content_type)
                                 {
                                     body = body_args;
+                                } else {
+                                    eprintln!("Failed to find body for line: {:?} {:?}", line, header_content_type);
                                 }
                             }
                         }
@@ -570,6 +569,8 @@ mod request_test {
                 response_unwrapped.get(&"size".to_string()).unwrap().body,
                 b"false"
             );
+        } else {
+            panic!("Expected multipart body but received: {:?}", response_unwrapped);
         }
 
         let response = Message::get_message_body("", &content_type);
@@ -697,7 +698,7 @@ mod request_test {
     }
 
     #[test]
-    fn from_tcp_stream() {
+    fn test_from_tcp_stream() {
         // GET request with no headers or body
         let response = Message::from_tcp_stream(b"GET / HTTP/2.0\r\n");
         assert!(response.is_some());
@@ -751,6 +752,20 @@ mod request_test {
         assert!(response.is_none());
         let response = Message::from_tcp_stream(b"");
         assert!(response.is_none());
+
+        // Multi-part with form-data
+        let response = Message::from_tcp_stream(b"POST /?test=1 HTTP/1.1\r\nHost: localhost:8888\r\nUser-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:63.0) Gecko/20100101 Firefox/63.0\r\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\nAccept-Language: en-US,en;q=0.5\r\nAccept-Encoding: gzip, deflate\r\nReferer: http://localhost:8888/?test=1\r\nContent-Type: multipart/form-data; boundary=---------------------------11296377662066493682306290443\r\nContent-Length: 4123883\r\nDNT: 1\r\nConnection: keep-alive\r\nUpgrade-Insecure-Requests: 1\r\nPragma: no-cache\r\nCache-Control: no-cache\r\n\r\n-----------------------------11296377662066493682306290443\r\nContent-Disposition: form-data; name=\"file\"; filename=\"FL_insurance_sample.csv\"\r\nContent-Type: text/csv\r\n\r\npolicyID,statecode,county,eq_site_limit,hu_site_limit,fl_site_limit,fr_site_limit,tiv_2011,tiv_2012,eq_site_deductible,hu_site_deductible,fl_site_deductible,fr_site_deductible,point_latitude,point_longitude,line,construction,point_granularity\r\n119736,FL,CLAY COUNTY,498960,498960,498960,498960,498960,792148.9,0,9979.2,0,0,30.102261,-81.711777,Residential,Masonry,1\r\n448094,FL,CLAY COUNTY,1322376.3,1322376.3,1322376.3,1322376.3,1322376.3,1438163.57,0,0,0,0,30.063936,-81.707664,Residential,Masonry,3\r\n-----------------------------11296377662066493682306290443--");
+        assert!(response.is_some());
+        let response_unwrapped = response.unwrap();
+        if let BodyContentType::MultiPart(body) = response_unwrapped.body {
+            assert_eq!(
+                String::from_utf8(body.get(&"file".to_string()).unwrap().body.clone()).unwrap(),
+                "policyID,statecode,county,eq_site_limit,hu_site_limit,fl_site_limit,fr_site_limit,tiv_2011,tiv_2012,eq_site_deductible,hu_site_deductible,fl_site_deductible,fr_site_deductible,point_latitude,point_longitude,line,construction,point_granularity\r\n119736,FL,CLAY COUNTY,498960,498960,498960,498960,498960,792148.9,0,9979.2,0,0,30.102261,-81.711777,Residential,Masonry,1\r\n448094,FL,CLAY COUNTY,1322376.3,1322376.3,1322376.3,1322376.3,1322376.3,1438163.57,0,0,0,0,30.063936,-81.707664,Residential,Masonry,2".to_string()
+            );
+        } else {
+            eprintln!("Boundary header: {:?}", response_unwrapped.headers.get("Content-Type").unwrap().get_key_value("boundary").unwrap());
+            panic!("Expected multipart content but got: {:?}", response_unwrapped);
+        }
 
         // Get requests should get their message body parsed
         let response = Message::from_tcp_stream(b"GET / HTTP/2.0\r\n\r\nabc=123");
