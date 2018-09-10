@@ -3,11 +3,11 @@
 
 ## TCP-HTTP
 
-* Support TLS?
-* Support gzipped content-encoded responses
-* Create a session handling framework (as separate crate?)
-* Create a template engine framework (as separate crate?)
-* Create a cache engine framework (as separate crate?)
+* Make it easy to use third-party TLS
+* Support gzip content-encoded responses
+* Create a session handling framework
+* Create a template engine framework
+* Create a cache engine framework
 
 
 [Back to start](../../../)
