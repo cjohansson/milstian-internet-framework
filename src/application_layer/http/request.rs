@@ -115,7 +115,8 @@ pub enum Protocol {
 enum Section {
     Line,
     HeaderFields,
-    MessageBody,
+    MessageBodySinglePart,
+    MessageBodyMultiPart,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -225,15 +226,16 @@ impl Message {
                         }
                         Section::HeaderFields => {
                             if line.trim().is_empty() {
-                                section = Section::MessageBody;
+                                section = Section::MessageBodySinglePart;
                             } else {
                                 let (header_key, header_value) = Message::get_header_field(line)?;
                                 headers.insert(header_key, header_value);
                             }
                         }
-                        Section::MessageBody => {
+                        Section::MessageBodySinglePart => {
                             body.append(&mut line.as_bytes().to_vec());
                         }
+                        _ => (),
                     }
                 }
 
@@ -430,10 +432,13 @@ impl Message {
     }
 
     pub fn from_tcp_stream(request: &[u8]) -> Option<Message> {
+        // TODO Is binary uploads really utf8?
         if let Ok(mut request) = str::from_utf8(request) {
+            // TODO Is HTTP requests really ASCII?
             if request.is_ascii() {
                 // Trim null bytes
                 request = request.trim_matches(char::from(0));
+
                 let mut headers: HashMap<String, HeaderValueParts> = HashMap::new();
                 let mut body: BodyContentType = BodyContentType::SinglePart(HashMap::new());
                 let mut request_line: Line = Line {
@@ -445,6 +450,9 @@ impl Message {
                     query_string: String::new(),
                 };
                 let mut section = Section::Line;
+                let mut header_content_type = HeaderContentType::SinglePart;
+                let mut body_concat = String::new();
+
                 for mut line in request.lines() {
                     match section {
                         Section::Line => {
@@ -453,20 +461,7 @@ impl Message {
                         }
                         Section::HeaderFields => {
                             if line.trim().is_empty() {
-                                section = Section::MessageBody;
-                            } else {
-                                let (header_key, header_value) = Message::get_header_field(line)?;
-                                headers.insert(header_key, header_value);
-                            }
-                        }
-                        Section::MessageBody => {
-                            if line.is_empty() {
-                                break;
-                            } else if Message::method_has_request_body(&request_line.method)
-                                != SettingValence::No
-                            {
-                                // Determine request part type
-                                let mut header_content_type = HeaderContentType::SinglePart;
+                                // Check if we have a multi-part body
                                 if let Some(content_type_header) = headers.get("Content-Type") {
                                     if let Some(boundary) =
                                         content_type_header.get_key_value("boundary")
@@ -475,17 +470,60 @@ impl Message {
                                             HeaderContentType::MultiPart(boundary);
                                     }
                                 }
-                                if let Some(body_args) =
-                                    Message::get_message_body(line, &header_content_type)
+
+                                if Message::method_has_request_body(&request_line.method)
+                                    != SettingValence::No
                                 {
-                                    body = body_args;
+                                    match header_content_type {
+                                        HeaderContentType::MultiPart(_) => {
+                                            section = Section::MessageBodyMultiPart;
+                                        }
+                                        HeaderContentType::SinglePart => {
+                                            section = Section::MessageBodySinglePart;
+                                        }
+                                    }
                                 } else {
-                                    eprintln!("Failed to find body for line: {:?} {:?}", line, header_content_type);
+                                    break;
                                 }
+                            } else {
+                                let (header_key, header_value) = Message::get_header_field(line)?;
+                                headers.insert(header_key, header_value);
+                            }
+                        }
+                        Section::MessageBodyMultiPart => {
+                            body_concat.push_str(&line);
+                            body_concat.push_str("\r\n");
+                        }
+                        Section::MessageBodySinglePart => {
+                            if line.is_empty() {
+                                break;
+                            }
+
+                            if let Some(body_args) =
+                                Message::get_message_body(line, &header_content_type)
+                            {
+                                body = body_args;
                             }
                         }
                     }
                 }
+
+                match section {
+                    Section::MessageBodyMultiPart => {
+                        if let Some(body_args) =
+                            Message::get_message_body(&body_concat, &header_content_type)
+                        {
+                            body = body_args;
+                        } else {
+                            eprintln!(
+                                "Failed to find multipart data for body: {:?}",
+                                &body_concat
+                            );
+                        }
+                    },
+                    _ => ()
+                }
+
                 if request_line.method != Method::Invalid
                     && request_line.protocol != Protocol::Invalid
                 {
@@ -570,7 +608,10 @@ mod request_test {
                 b"false"
             );
         } else {
-            panic!("Expected multipart body but received: {:?}", response_unwrapped);
+            panic!(
+                "Expected multipart body but received: {:?}",
+                response_unwrapped
+            );
         }
 
         let response = Message::get_message_body("", &content_type);
@@ -702,7 +743,7 @@ mod request_test {
         // GET request with no headers or body
         let response = Message::from_tcp_stream(b"GET / HTTP/2.0\r\n");
         assert!(response.is_some());
-        let response_unwrapped = response.unwrap();
+        let response_unwrapped = response.expect("GET HTTP2");
         assert_eq!(response_unwrapped.request_line.method, Method::Get);
         assert_eq!(response_unwrapped.request_line.request_uri, "/".to_string());
         assert_eq!(
@@ -719,14 +760,14 @@ mod request_test {
         assert!(response.is_some());
         assert_eq!(
             "/random".to_string(),
-            response.unwrap().request_line.request_uri
+            response.expect("/random").request_line.request_uri
         );
 
         // POST request with random header
         let response =
             Message::from_tcp_stream(b"POST / HTTP/1.0\r\nAgent: Random browser\r\n\r\ntest=abc");
         assert!(response.is_some());
-        let response_unwrapped = response.unwrap();
+        let response_unwrapped = response.expect("POST HTTP1");
         assert_eq!(response_unwrapped.request_line.method, Method::Post);
         assert_eq!(
             response_unwrapped.request_line.protocol,
@@ -736,13 +777,13 @@ mod request_test {
             response_unwrapped
                 .headers
                 .get(&"Agent".to_string())
-                .unwrap()
+                .expect("Agent")
                 .to_string(),
             "Random browser".to_string()
         );
         if let BodyContentType::SinglePart(body) = response_unwrapped.body {
             assert_eq!(
-                body.get(&"test".to_string()).unwrap().to_string(),
+                body.get(&"test".to_string()).expect("test-abc").to_string(),
                 "abc".to_string()
             );
         }
@@ -756,15 +797,26 @@ mod request_test {
         // Multi-part with form-data
         let response = Message::from_tcp_stream(b"POST /?test=1 HTTP/1.1\r\nHost: localhost:8888\r\nUser-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:63.0) Gecko/20100101 Firefox/63.0\r\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\nAccept-Language: en-US,en;q=0.5\r\nAccept-Encoding: gzip, deflate\r\nReferer: http://localhost:8888/?test=1\r\nContent-Type: multipart/form-data; boundary=---------------------------11296377662066493682306290443\r\nContent-Length: 4123883\r\nDNT: 1\r\nConnection: keep-alive\r\nUpgrade-Insecure-Requests: 1\r\nPragma: no-cache\r\nCache-Control: no-cache\r\n\r\n-----------------------------11296377662066493682306290443\r\nContent-Disposition: form-data; name=\"file\"; filename=\"FL_insurance_sample.csv\"\r\nContent-Type: text/csv\r\n\r\npolicyID,statecode,county,eq_site_limit,hu_site_limit,fl_site_limit,fr_site_limit,tiv_2011,tiv_2012,eq_site_deductible,hu_site_deductible,fl_site_deductible,fr_site_deductible,point_latitude,point_longitude,line,construction,point_granularity\r\n119736,FL,CLAY COUNTY,498960,498960,498960,498960,498960,792148.9,0,9979.2,0,0,30.102261,-81.711777,Residential,Masonry,1\r\n448094,FL,CLAY COUNTY,1322376.3,1322376.3,1322376.3,1322376.3,1322376.3,1438163.57,0,0,0,0,30.063936,-81.707664,Residential,Masonry,3\r\n-----------------------------11296377662066493682306290443--");
         assert!(response.is_some());
-        let response_unwrapped = response.unwrap();
+        let response_unwrapped = response.expect("multipart");
         if let BodyContentType::MultiPart(body) = response_unwrapped.body {
             assert_eq!(
                 String::from_utf8(body.get(&"file".to_string()).unwrap().body.clone()).unwrap(),
-                "policyID,statecode,county,eq_site_limit,hu_site_limit,fl_site_limit,fr_site_limit,tiv_2011,tiv_2012,eq_site_deductible,hu_site_deductible,fl_site_deductible,fr_site_deductible,point_latitude,point_longitude,line,construction,point_granularity\r\n119736,FL,CLAY COUNTY,498960,498960,498960,498960,498960,792148.9,0,9979.2,0,0,30.102261,-81.711777,Residential,Masonry,1\r\n448094,FL,CLAY COUNTY,1322376.3,1322376.3,1322376.3,1322376.3,1322376.3,1438163.57,0,0,0,0,30.063936,-81.707664,Residential,Masonry,2".to_string()
+                "policyID,statecode,county,eq_site_limit,hu_site_limit,fl_site_limit,fr_site_limit,tiv_2011,tiv_2012,eq_site_deductible,hu_site_deductible,fl_site_deductible,fr_site_deductible,point_latitude,point_longitude,line,construction,point_granularity\r\n119736,FL,CLAY COUNTY,498960,498960,498960,498960,498960,792148.9,0,9979.2,0,0,30.102261,-81.711777,Residential,Masonry,1\r\n448094,FL,CLAY COUNTY,1322376.3,1322376.3,1322376.3,1322376.3,1322376.3,1438163.57,0,0,0,0,30.063936,-81.707664,Residential,Masonry,3".to_string()
             );
         } else {
-            eprintln!("Boundary header: {:?}", response_unwrapped.headers.get("Content-Type").unwrap().get_key_value("boundary").unwrap());
-            panic!("Expected multipart content but got: {:?}", response_unwrapped);
+            eprintln!(
+                "Boundary header: {:?}",
+                response_unwrapped
+                    .headers
+                    .get("Content-Type")
+                    .unwrap()
+                    .get_key_value("boundary")
+                    .unwrap()
+            );
+            panic!(
+                "Expected multipart content but got: {:?}",
+                response_unwrapped
+            );
         }
 
         // Get requests should get their message body parsed
