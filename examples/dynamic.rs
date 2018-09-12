@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 
 use milstian::application_layer::http::request;
+use milstian::application_layer::http::request::BodyContentType;
 use milstian::application_layer::http::response;
 use milstian::response::tcp::http::ResponderInterface;
 use milstian::{Application, Config};
@@ -48,11 +49,27 @@ impl ResponderInterface for Responder {
                 request::Message::get_protocol_text(&request_message.request_line.protocol);
             let mut headers: HashMap<String, String> = HashMap::new();
             headers.insert("Content-Type".to_string(), "text/html".to_string());
+            let upload = match request_message.body {
+                BodyContentType::MultiPart(ref body) => {
+                    match body.get(&"file".to_string()) {
+                        Some(value) => {
+                            match String::from_utf8(value.body.clone()) {
+                                Ok(utf8_value) => utf8_value,
+                                _ => "no UTF-8 file data".to_string()
+                            }
+                        },
+                        _ => "no file data".to_string()
+                    }
+                },
+                _ => "no data".to_string()
+            };
+            let output = format!("<html><head><title>Milstian Web Framework - Dynamic Test</title><link rel='stylesheet' href='/css/style.css' /></head><body><div class='wrapper'><h1>Milstian Web Framework</h1><img alt='' src='/img/logo1-modified.jpg' /><p><strong>Query argument:</strong> {}</p><div><strong>File upload:</strong><br /><pre>{}</pre></div><h2>Dynamic Test</h2><form action='' method='post' enctype='multipart/form-data'><fieldset><legend>File upload</legend><div><label>Select file<br /><input type='file' name='file' /></label></div><div><input type='submit' value='Upload' /></div></fieldset></form></div></body></html>", route, &upload);
+
             return Ok(response::Message::new(
                 protocol.to_string(),
                 "200 OK".to_string(),
                 headers,
-                format!("<html><head><title>Milstian Web Framework - Dynamic Test</title><link rel='stylesheet' href='/css/style.css' /></head><body><div class='wrapper'><h1>Milstian Web Framework</h1><img alt='' src='/img/logo1-modified.jpg' /><p><strong>Query argument:</strong> {}</p><h2>Dynamic Test</h2><form action='' method='post' enctype='multipart/form-data'><fieldset><legend>File upload</legend><div><label>Select file<br /><input type='file' name='file' /></label></div><div><input type='submit' value='Upload' /></div></fieldset></form></div></body></html>", route).as_bytes().to_vec(),
+                output.as_bytes().to_vec()
             ).to_bytes());
         } else {
             Err("No result".to_string())

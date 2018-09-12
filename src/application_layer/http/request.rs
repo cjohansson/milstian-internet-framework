@@ -52,7 +52,7 @@ pub enum HeaderValuePart {
 
 #[derive(Debug)]
 pub struct HeaderValueParts {
-    parts: Vec<Vec<HeaderValuePart>>,
+    pub parts: Vec<Vec<HeaderValuePart>>,
 }
 
 impl HeaderValueParts {
@@ -99,8 +99,8 @@ impl HeaderValueParts {
 
 #[derive(Debug)]
 pub struct MultiPartValue {
-    body: Vec<u8>,
-    headers: HashMap<String, HeaderValueParts>,
+    pub body: Vec<u8>,
+    pub headers: HashMap<String, HeaderValueParts>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
