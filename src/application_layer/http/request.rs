@@ -106,10 +106,10 @@ pub struct MultiPartValue {
 #[derive(Debug, Eq, PartialEq)]
 pub enum Protocol {
     Invalid,
-    OneDotZero,
-    OneDotOne,
-    TwoDotZero,
-    ZeroDotNine,
+    V1_0,
+    V1_1,
+    V2_0,
+    V0_9,
 }
 
 enum Section {
@@ -282,10 +282,10 @@ impl Message {
 
     pub fn get_protocol_text(protocol: &Protocol) -> String {
         match protocol {
-            Protocol::ZeroDotNine => String::from("HTTP/0.9"),
-            Protocol::OneDotZero => String::from("HTTP/1.0"),
-            Protocol::OneDotOne => String::from("HTTP/1.1"),
-            Protocol::TwoDotZero => String::from("HTTP/2.0"),
+            Protocol::V0_9 => String::from("HTTP/0.9"),
+            Protocol::V1_0 => String::from("HTTP/1.0"),
+            Protocol::V1_1 => String::from("HTTP/1.1"),
+            Protocol::V2_0 => String::from("HTTP/2.0"),
             Protocol::Invalid => String::from("INVALID"),
         }
     }
@@ -382,10 +382,10 @@ impl Message {
             }
 
             let protocol = match parts.get(2)?.as_ref() {
-                "HTTP/0.9" => Protocol::ZeroDotNine,
-                "HTTP/1.0" => Protocol::OneDotZero,
-                "HTTP/1.1" => Protocol::OneDotOne,
-                "HTTP/2.0" => Protocol::TwoDotZero,
+                "HTTP/0.9" => Protocol::V0_9,
+                "HTTP/1.0" => Protocol::V1_0,
+                "HTTP/1.1" => Protocol::V1_1,
+                "HTTP/2.0" => Protocol::V2_0,
                 _ => Protocol::Invalid,
             };
 
@@ -404,7 +404,7 @@ impl Message {
             let method = Method::Get;
             let request_uri = parts.get(0)?.trim_matches(char::from(0)).to_string();
             if !request_uri.is_empty() {
-                let protocol = Protocol::ZeroDotNine;
+                let protocol = Protocol::V0_9;
 
                 let request_uri_copy = request_uri.clone();
                 let mut request_uri_base = request_uri.clone();
@@ -676,7 +676,7 @@ mod request_test {
                 .to_string(),
             String::from("test")
         );
-        assert_eq!(response_unpacked.protocol, Protocol::ZeroDotNine);
+        assert_eq!(response_unpacked.protocol, Protocol::V0_9);
 
         let response = Message::get_request_line("GET / HTTP/1.0\r\n");
         assert!(response.is_some());
@@ -686,7 +686,7 @@ mod request_test {
         assert_eq!(response_unpacked.request_uri, String::from("/"));
         assert_eq!(response_unpacked.request_uri_base, String::from("/"));
         assert_eq!(response_unpacked.query_string, String::from(""));
-        assert_eq!(response_unpacked.protocol, Protocol::OneDotZero);
+        assert_eq!(response_unpacked.protocol, Protocol::V1_0);
 
         let response = Message::get_request_line("HEAD /moradish.html?test&abc=def HTTP/1.1\r\n");
         assert!(response.is_some());
@@ -718,7 +718,7 @@ mod request_test {
                 .to_string(),
             String::from("def")
         );
-        assert_eq!(response_unpacked.protocol, Protocol::OneDotOne);
+        assert_eq!(response_unpacked.protocol, Protocol::V1_1);
 
         let response = Message::get_request_line("OPTIONS /random/random2.txt HTTP/2.0\r\n");
         assert!(response.is_some());
@@ -729,7 +729,7 @@ mod request_test {
             response_unpacked.request_uri,
             String::from("/random/random2.txt")
         );
-        assert_eq!(response_unpacked.protocol, Protocol::TwoDotZero);
+        assert_eq!(response_unpacked.protocol, Protocol::V2_0);
 
         let response = Message::get_request_line("GET / HTTP/2.2\r\n");
         assert!(response.is_none());
@@ -743,10 +743,7 @@ mod request_test {
         let response_unwrapped = response.expect("GET HTTP2");
         assert_eq!(response_unwrapped.request_line.method, Method::Get);
         assert_eq!(response_unwrapped.request_line.request_uri, "/".to_string());
-        assert_eq!(
-            response_unwrapped.request_line.protocol,
-            Protocol::TwoDotZero
-        );
+        assert_eq!(response_unwrapped.request_line.protocol, Protocol::V2_0);
 
         // POST request with random header and null bytes
         let mut request: Vec<u8> =
@@ -766,10 +763,7 @@ mod request_test {
         assert!(response.is_some());
         let response_unwrapped = response.expect("POST HTTP1");
         assert_eq!(response_unwrapped.request_line.method, Method::Post);
-        assert_eq!(
-            response_unwrapped.request_line.protocol,
-            Protocol::OneDotZero
-        );
+        assert_eq!(response_unwrapped.request_line.protocol, Protocol::V1_0);
         assert_eq!(
             response_unwrapped
                 .headers
@@ -843,10 +837,7 @@ mod request_test {
             response_unwrapped.request_line.request_uri,
             "html/index.html".to_string()
         );
-        assert_eq!(
-            response_unwrapped.request_line.protocol,
-            Protocol::ZeroDotNine
-        );
+        assert_eq!(response_unwrapped.request_line.protocol, Protocol::V0_9);
 
         let response = Message::from_tcp_stream(&[0; 100]);
         assert!(response.is_none());
