@@ -10,6 +10,8 @@
 
 ## General
 
+* Create a TOML configuration parser
+* Create a command-line parser
 * Create a session handling framework
 * Create a template engine framework
 * Create a cache engine framework

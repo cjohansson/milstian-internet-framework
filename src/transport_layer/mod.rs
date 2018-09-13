@@ -8,7 +8,7 @@ use Config;
 pub struct TCP {}
 
 impl TCP {
-    /// This method creates a new application based on configuration
+    /// This method creates a new HTTP over TCP application based on configuration
     pub fn http(config: Result<Config, String>, responders: Vec<Box<ResponderInterface + Send>>) {
         let config = config.expect("Missing configuration!");
         let path = format!("{}:{}", &config.server_host, &config.server_port);

@@ -23,9 +23,6 @@ pub struct Config {
     pub tcp_limit: usize,
 }
 
-// TODO Add a TOML parser
-// TODO Add command line parser
-
 impl Config {
     pub fn get_canonical_root(root_path: &String) -> Result<String, String> {
         let root_path = PathBuf::from(&root_path);
@@ -140,9 +137,7 @@ impl Application {
         transport_layer::TCP::http(config, responders)
     }
 
-    pub fn tcp_http_with_legacy_responders(
-        config: Result<Config, String>
-    ) {
+    pub fn tcp_http_with_legacy_responders(config: Result<Config, String>) {
         let responders: Vec<Box<ResponderInterface + Send>> = vec![
             Box::new(filesystem::Responder::new()),
             Box::new(file_not_found::Responder::new()),
@@ -153,7 +148,7 @@ impl Application {
 
     pub fn tcp_http_with_legacy_and_custom_responders(
         config: Result<Config, String>,
-        custom: Box<ResponderInterface + Send>
+        custom: Box<ResponderInterface + Send>,
     ) {
         let responders: Vec<Box<ResponderInterface + Send>> = vec![
             custom,
@@ -163,5 +158,4 @@ impl Application {
         ];
         transport_layer::TCP::http(config, responders)
     }
-
 }
