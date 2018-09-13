@@ -433,6 +433,7 @@ impl Message {
         None
     }
 
+    // TODO Rebuild this to work binary instead
     pub fn from_tcp_stream(request: &[u8]) -> Option<Message> {
         // TODO Is binary uploads really utf8?
         if let Ok(mut request) = str::from_utf8(request) {
