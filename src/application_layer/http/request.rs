@@ -119,6 +119,11 @@ enum Section {
     MessageBodyMultiPart,
 }
 
+enum ParserMode {
+    Boundaries,
+    Lines,
+}
+
 #[derive(Debug, Eq, PartialEq)]
 enum SettingValence {
     Optional,
@@ -435,104 +440,139 @@ impl Message {
 
     // TODO Rebuild this to work binary instead
     pub fn from_tcp_stream(request: &[u8]) -> Option<Message> {
-        // TODO Is binary uploads really utf8?
-        if let Ok(mut request) = str::from_utf8(request) {
-            // TODO Is HTTP requests really ASCII?
-            if request.is_ascii() {
-                // Trim null bytes
-                request = request.trim_matches(char::from(0));
+        let mut headers: HashMap<String, HeaderValueParts> = HashMap::new();
+        let mut body: BodyContentType = BodyContentType::SinglePart(HashMap::new());
+        let mut request_line: Line = Line {
+            method: Method::Invalid,
+            protocol: Protocol::Invalid,
+            request_uri: String::new(),
+            request_uri_base: String::new(),
+            query_arguments: HashMap::new(),
+            query_string: String::new(),
+        };
+        let mut section = Section::Line;
+        let mut header_content_type = HeaderContentType::SinglePart;
+        let mut body_concat = String::new();
 
-                let mut headers: HashMap<String, HeaderValueParts> = HashMap::new();
-                let mut body: BodyContentType = BodyContentType::SinglePart(HashMap::new());
-                let mut request_line: Line = Line {
-                    method: Method::Invalid,
-                    protocol: Protocol::Invalid,
-                    request_uri: String::new(),
-                    request_uri_base: String::new(),
-                    query_arguments: HashMap::new(),
-                    query_string: String::new(),
-                };
-                let mut section = Section::Line;
-                let mut header_content_type = HeaderContentType::SinglePart;
-                let mut body_concat = String::new();
+        let mut start = 0;
+        let mut end = 0;
+        let mut last_was_carriage_return = false;
+        let parser_mode = ParserMode::Lines;
+        let mut found_data = false;
+        let mut line = "";
+        eprintln!("Starting parsing of {:?} = {:?}", &request, str::from_utf8(&request));
 
-                for mut line in request.lines() {
-                    match section {
-                        Section::Line => {
-                            request_line = Message::get_request_line(line)?;
-                            section = Section::HeaderFields;
-                        }
-                        Section::HeaderFields => {
-                            if line.trim().is_empty() {
-                                // Check if we have a multi-part body
-                                if let Some(content_type_header) = headers.get("Content-Type") {
-                                    if let Some(boundary) =
-                                        content_type_header.get_key_value("boundary")
-                                    {
-                                        header_content_type =
-                                            HeaderContentType::MultiPart(boundary);
-                                    }
-                                }
+        for byte in request.iter() {
+            // When we get null bytes we are done
+            if byte == &0 {
+                break;
+            }
 
-                                if Message::method_has_request_body(&request_line.method)
-                                    != SettingValence::No
-                                {
-                                    match header_content_type {
-                                        HeaderContentType::MultiPart(_) => {
-                                            section = Section::MessageBodyMultiPart;
-                                        }
-                                        HeaderContentType::SinglePart => {
-                                            section = Section::MessageBodySinglePart;
-                                        }
-                                    }
-                                } else {
-                                    break;
-                                }
-                            } else {
-                                let (header_key, header_value) = Message::get_header_field(line)?;
-                                headers.insert(header_key, header_value);
-                            }
+            match parser_mode {
+                ParserMode::Boundaries => {
+                    
+                },
+                ParserMode::Lines => {
+                    if byte == &13 {
+                        last_was_carriage_return = true;
+                    } else if byte == &10 && last_was_carriage_return {
+                        let clean_end = end - 1;
+                        if let Ok(utf8_line) = str::from_utf8(&request[start..clean_end]) {
+                            line = utf8_line;
+                            eprintln!("Found line {:?} from {:?}", &utf8_line, &request[start..clean_end]);
+                            found_data = true;
+                        } else {
+                            eprintln!("Failed to utf8 encode line {:?}", &request[start..clean_end]);
                         }
-                        Section::MessageBodyMultiPart => {
-                            body_concat.push_str(&line);
-                            body_concat.push_str("\r\n");
-                        }
-                        Section::MessageBodySinglePart => {
-                            if line.is_empty() {
-                                break;
-                            }
-
-                            if let Some(body_args) =
-                                Message::get_message_body(line, &header_content_type)
-                            {
-                                body = body_args;
-                            }
-                        }
+                        last_was_carriage_return = false;
+                    } else {
+                        last_was_carriage_return = false;
                     }
                 }
+            }
 
+            // Increment byte position
+            end = end + 1;
+
+            if found_data {
+                found_data = false;
+                start = end;
                 match section {
+                    Section::Line => {
+                        request_line = Message::get_request_line(line)?;
+                        section = Section::HeaderFields;
+                    }
+                    Section::HeaderFields => {
+                        if line.trim().is_empty() {
+                            // Check if we have a multi-part body
+                            if let Some(content_type_header) = headers.get("Content-Type") {
+                                if let Some(boundary) =
+                                    content_type_header.get_key_value("boundary")
+                                {
+                                    header_content_type =
+                                        HeaderContentType::MultiPart(boundary);
+                                }
+                            }
+
+                            if Message::method_has_request_body(&request_line.method)
+                                != SettingValence::No
+                            {
+                                match header_content_type {
+                                    HeaderContentType::MultiPart(_) => {
+                                        section = Section::MessageBodyMultiPart;
+                                    }
+                                    HeaderContentType::SinglePart => {
+                                        section = Section::MessageBodySinglePart;
+                                    }
+                                }
+                            } else {
+                                break;
+                            }
+                        } else {
+                            let (header_key, header_value) = Message::get_header_field(line)?;
+                            headers.insert(header_key, header_value);
+                        }
+                    }
                     Section::MessageBodyMultiPart => {
+                        body_concat.push_str(&line);
+                        body_concat.push_str("\r\n");
+                    }
+                    Section::MessageBodySinglePart => {
+                        if line.is_empty() {
+                            break;
+                        }
+
                         if let Some(body_args) =
-                            Message::get_message_body(&body_concat, &header_content_type)
+                            Message::get_message_body(line, &header_content_type)
                         {
                             body = body_args;
                         }
                     }
-                    _ => (),
-                }
-
-                if request_line.method != Method::Invalid
-                    && request_line.protocol != Protocol::Invalid
-                {
-                    return Some(Message {
-                        body,
-                        headers,
-                        request_line,
-                    });
                 }
             }
         }
+
+        match section {
+            Section::MessageBodyMultiPart => {
+                if let Some(body_args) =
+                    Message::get_message_body(&body_concat, &header_content_type)
+                {
+                    body = body_args;
+                }
+            }
+            _ => (),
+        }
+
+        if request_line.method != Method::Invalid
+            && request_line.protocol != Protocol::Invalid
+        {
+            return Some(Message {
+                body,
+                headers,
+                request_line,
+            });
+        }
+
         None
     }
 }
