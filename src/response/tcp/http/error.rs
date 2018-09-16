@@ -55,7 +55,7 @@ mod error_test {
     use std::net::{IpAddr, Ipv4Addr};
 
     #[test]
-    fn matches() {
+    fn test_matches() {
         let config = Config {
             filesystem_directory_index: "index.htm".to_string(),
             file_not_found_file: "404.htm".to_string(),
@@ -85,7 +85,7 @@ mod error_test {
     }
 
     #[test]
-    fn respond() {
+    fn test_respond() {
         let config = Config {
             filesystem_directory_index: "index.htm".to_string(),
             file_not_found_file: "404.htm".to_string(),
