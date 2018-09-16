@@ -112,11 +112,10 @@ pub enum Protocol {
     V0_9,
 }
 
-enum Section {
+enum ParserSection {
     Line,
     HeaderFields,
-    MessageBodySinglePart,
-    MessageBodyMultiPart,
+    MessageBody,
 }
 
 enum ParserMode {
@@ -221,10 +220,10 @@ impl Message {
 
                 // For each line within bounded object
                 let parts: Vec<&str> = argument.splitn(2, "\r\n\r\n").collect();
-                let mut section = Section::HeaderFields;
+                let mut section = ParserSection::HeaderFields;
                 for part in parts {
                     match section {
-                        Section::HeaderFields => {
+                        ParserSection::HeaderFields => {
                             for line in part.lines() {
                                 if !line.is_empty() && line != "--" {
                                     if let Some((header_key, header_value)) =
@@ -235,14 +234,14 @@ impl Message {
                                 }
                             }
                             if headers.len() > 0 {
-                                section = Section::MessageBodySinglePart;
+                                section = ParserSection::MessageBody;
                             }
                         }
-                        Section::MessageBodySinglePart => {
+                        ParserSection::MessageBody => {
                             body = part.trim_right().as_bytes().to_vec();
                             break;
                         }
-                        _ => break,
+                        _ => (),
                     }
                 }
 
@@ -456,13 +455,12 @@ impl Message {
         };
 
         // Parsing variables
-        let mut section = Section::Line;
+        let mut section = ParserSection::Line;
         let mut start = 0;
         let mut end = 0;
         let last_index = request.len() - 1;
         let mut last_was_carriage_return = false;
         let mut parser_mode = ParserMode::Lines;
-        let mut line = "";
 
         eprintln!(
             "Starting parsing of {:?} = {:?}",
@@ -471,8 +469,11 @@ impl Message {
         );
         for byte in request.iter() {
             match parser_mode {
-                ParserMode::Boundaries(boundary) => {
-                    if byte == &0 || end == last_index {
+                ParserMode::Boundaries(ref _boundary) => {
+                    if byte == &13 {
+                        last_was_carriage_return = true;
+                    } else if byte == &10 && last_was_carriage_return {
+                    } else if byte == &0 || end == last_index {
                         // TODO Do something here
                         break;
                     } else {
@@ -490,8 +491,13 @@ impl Message {
                                 &utf8_line,
                                 &request[start..clean_end]
                             );
-                            Message::parse_line(&utf8_line, &section, &message, &parser_mode);
-                            start = end;
+                            Message::parse_line(
+                                &utf8_line,
+                                &mut section,
+                                &mut message,
+                                &mut parser_mode,
+                            );
+                            start = end + 1;
                         } else {
                             eprintln!(
                                 "Failed to utf8 encode line {:?}",
@@ -508,12 +514,15 @@ impl Message {
                                 &utf8_line,
                                 &request[start..end]
                             );
-                            Message::parse_line(&utf8_line, &section, &message, &parser_mode);
-                            start = end;
+                            Message::parse_line(
+                                &utf8_line,
+                                &mut section,
+                                &mut message,
+                                &mut parser_mode,
+                            );
                         } else {
                             eprintln!("Failed to utf8 encode line {:?}", &request[start..end]);
                         }
-                        last_was_carriage_return = false;
                         break;
                     } else {
                         last_was_carriage_return = false;
@@ -534,15 +543,20 @@ impl Message {
         None
     }
 
-    fn parse_line(line: &str, section: &Section, message: &Message, parser_mode: &ParserMode) {
+    fn parse_line(
+        line: &str,
+        section: &mut ParserSection,
+        message: &mut Message,
+        parser_mode: &mut ParserMode,
+    ) {
         match section {
-            Section::Line => {
+            ParserSection::Line => {
                 if let Some(request_line_temp) = Message::get_request_line(line) {
                     message.request_line = request_line_temp;
-                    *section = Section::HeaderFields;
+                    *section = ParserSection::HeaderFields;
                 }
             }
-            Section::HeaderFields => {
+            ParserSection::HeaderFields => {
                 // Is it the last line of the headers?
                 if line.trim().is_empty() {
                     // Check if we have a multi-part body
@@ -555,14 +569,7 @@ impl Message {
                     if Message::method_has_request_body(&message.request_line.method)
                         != SettingValence::No
                     {
-                        match parser_mode {
-                            ParserMode::Boundaries(_) => {
-                                *section = Section::MessageBodyMultiPart;
-                            }
-                            ParserMode::Lines => {
-                                *section = Section::MessageBodySinglePart;
-                            }
-                        }
+                        *section = ParserSection::MessageBody;
                     }
                 } else {
                     if let Some((header_key, header_value)) = Message::get_header_field(line) {
@@ -570,10 +577,11 @@ impl Message {
                     }
                 }
             }
-            Section::MessageBodyMultiPart => (),
-            Section::MessageBodySinglePart => {
+            ParserSection::MessageBody => {
                 if !line.is_empty() {
-                    if let Some(body_args) = Message::get_message_body(line, &header_content_type) {
+                    if let Some(body_args) =
+                        Message::get_message_body(line, &HeaderContentType::SinglePart)
+                    {
                         message.body = body_args;
                     }
                 }
