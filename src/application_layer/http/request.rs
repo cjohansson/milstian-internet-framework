@@ -119,7 +119,7 @@ enum ParserSection {
 }
 
 enum ParserMode {
-    Boundaries(String),
+    Boundaries(Vec<u8>),
     Lines,
 }
 
@@ -206,6 +206,7 @@ impl Message {
         }
     }
 
+    // TODO Remove this function
     fn get_query_args_from_multipart_string(
         subject: &str,
         boundary: &str,
@@ -294,6 +295,7 @@ impl Message {
         }
     }
 
+    // TODO Change this function
     pub fn get_message_body(
         body: &str,
         content_type: &HeaderContentType,
@@ -313,6 +315,7 @@ impl Message {
         None
     }
 
+    // TODO Maybe change keys to Camel-Case to improve parsing
     pub fn get_header_field(line: &str) -> Option<(String, HeaderValueParts)> {
         let line = line.trim();
         if !line.is_empty() {
@@ -460,6 +463,8 @@ impl Message {
         let mut end = 0;
         let last_index = request.len() - 1;
         let mut last_was_carriage_return = false;
+        let mut reading_boundary = true;
+        let mut binary_blob: Vec<u8> = Vec::new();
         let mut parser_mode = ParserMode::Lines;
 
         eprintln!(
@@ -469,14 +474,27 @@ impl Message {
         );
         for byte in request.iter() {
             match parser_mode {
-                ParserMode::Boundaries(ref _boundary) => {
+                ParserMode::Boundaries(ref boundary) => {
                     if byte == &13 {
                         last_was_carriage_return = true;
                     } else if byte == &10 && last_was_carriage_return {
+                        reading_boundary = true;
+                        start = end;
+                    } else if reading_boundary {
+                        // Does byte match next byte in boundary?
+                        if let Some(boundary_byte) = boundary.get(end - start) {
+                            
+                        } else {
+                            binary_blob.push(byte);
+                        }
                     } else if byte == &0 || end == last_index {
+                        if end == last_index {
+                            binary_blob.push(byte);
+                        }
                         // TODO Do something here
                         break;
                     } else {
+                        binary_blob.push(byte);
                         last_was_carriage_return = false;
                     }
                 }
