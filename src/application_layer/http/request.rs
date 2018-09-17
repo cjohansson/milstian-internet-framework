@@ -461,7 +461,7 @@ impl Message {
         let mut section = ParserSection::Line;
         let mut start = 0;
         let mut end = 0;
-        let last_index = request.len() - 1;
+        let last_index = match request.len() { 0 => 0, _ => request.len() - 1 };
         let mut last_was_carriage_return = false;
         let mut reading_boundary = true;
         let mut binary_blob: Vec<u8> = Vec::new();
@@ -480,21 +480,23 @@ impl Message {
                     } else if byte == &10 && last_was_carriage_return {
                         reading_boundary = true;
                         start = end;
+                        last_was_carriage_return = false;
                     } else if reading_boundary {
                         // Does byte match next byte in boundary?
-                        if let Some(boundary_byte) = boundary.get(end - start) {
-                            
+                        if let Some(_) = boundary.get(end - start) {
+                            reading_boundary = false;
                         } else {
-                            binary_blob.push(byte);
+                            binary_blob.push(*byte);
                         }
+                        last_was_carriage_return = false;
                     } else if byte == &0 || end == last_index {
                         if end == last_index {
-                            binary_blob.push(byte);
+                            binary_blob.push(*byte);
                         }
                         // TODO Do something here
                         break;
                     } else {
-                        binary_blob.push(byte);
+                        binary_blob.push(*byte);
                         last_was_carriage_return = false;
                     }
                 }
@@ -526,11 +528,15 @@ impl Message {
 
                     // When we get null bytes we are done or if we reach last index
                     } else if byte == &0 || end == last_index {
-                        if let Ok(utf8_line) = str::from_utf8(&request[start..end]) {
+                        let clean_end = match byte {
+                            &0 => end,
+                            _ => end + 1,
+                        };
+                        if let Ok(utf8_line) = str::from_utf8(&request[start..clean_end]) {
                             eprintln!(
                                 "Found line {:?} from {:?}",
                                 &utf8_line,
-                                &request[start..end]
+                                &request[start..clean_end]
                             );
                             Message::parse_line(
                                 &utf8_line,
@@ -539,7 +545,10 @@ impl Message {
                                 &mut parser_mode,
                             );
                         } else {
-                            eprintln!("Failed to utf8 encode line {:?}", &request[start..end]);
+                            eprintln!(
+                                "Failed to utf8 encode line {:?}",
+                                &request[start..clean_end]
+                            );
                         }
                         break;
                     } else {
@@ -580,7 +589,8 @@ impl Message {
                     // Check if we have a multi-part body
                     if let Some(content_type_header) = message.headers.get("Content-Type") {
                         if let Some(boundary) = content_type_header.get_key_value("boundary") {
-                            *parser_mode = ParserMode::Boundaries(boundary);
+                            *parser_mode = ParserMode::Boundaries(boundary.as_bytes().to_vec());
+                            eprintln!("Changing parser mode to boundaries: {}", &boundary);
                         }
                     }
 
@@ -588,6 +598,7 @@ impl Message {
                         != SettingValence::No
                     {
                         *section = ParserSection::MessageBody;
+                        eprintln!("Moving to message body section");
                     }
                 } else {
                     if let Some((header_key, header_value)) = Message::get_header_field(line) {
@@ -600,7 +611,10 @@ impl Message {
                     if let Some(body_args) =
                         Message::get_message_body(line, &HeaderContentType::SinglePart)
                     {
+                        eprintln!("Successfully parsed body {:?}", &body_args);
                         message.body = body_args;
+                    } else {
+                        eprintln!("Failed to parse body of {}", &line);
                     }
                 }
             }

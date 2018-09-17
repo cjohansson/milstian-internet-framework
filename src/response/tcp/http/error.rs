@@ -68,17 +68,17 @@ mod error_test {
         let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
         let mut responder = Responder::new();
         assert!(responder.matches(
-            &request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.0").unwrap(),
+            &request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.0").expect("Expecting index2.htm response"),
             &config,
             &socket
         ));
         assert!(responder.matches(
-            &request::Message::from_tcp_stream(b"GET /index3.htm HTTP/1.0").unwrap(),
+            &request::Message::from_tcp_stream(b"GET /index3.htm HTTP/1.0").expect("Expecting index3.htm response"),
             &config,
             &socket
         ));
         assert!(responder.matches(
-            &request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.1").unwrap(),
+            &request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.1").expect("Expecting index.htm response"),
             &config,
             &socket
         ));
