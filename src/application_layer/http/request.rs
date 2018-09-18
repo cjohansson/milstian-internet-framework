@@ -121,7 +121,6 @@ enum ParserSection {
 enum MultiPartSection {
     End,
     EndBoundary,
-    EndSuffix,
     Skipping,
     Start,
     StartSuffix,
@@ -467,11 +466,16 @@ impl Message {
         };
 
         // Parsing variables
-        let mut section = ParserSection::Line;
+        let mut start = 0;
         let mut start_boundary = 0;
-        let mut end = 0;
         let mut start_data = 0;
-        let last_index = match request.len() { 0 => 0, _ => request.len() - 1 };
+        let mut section = ParserSection::Line;
+        let mut end = 0;
+        let mut end_data = 0;
+        let last_index = match request.len() {
+            0 => 0,
+            _ => request.len() - 1,
+        };
         let mut last_was_carriage_return = false;
         let mut parser_mode = ParserMode::Lines;
         let mut multipart_section = MultiPartSection::Skipping;
@@ -492,35 +496,49 @@ impl Message {
                                 multipart_section = MultiPartSection::Start;
                                 start_boundary = end + 1;
                                 last_was_carriage_return = false;
+                                eprintln!("Moving on to multi-part start");
                             } else if byte == &0 {
                                 break;
                             } else {
                                 last_was_carriage_return = false;
                             }
-                        },
+                        }
                         MultiPartSection::Start => {
                             // Does byte match next byte in boundary?
                             if let Some(boundary_byte) = boundary.get(end - start_boundary) {
                                 if boundary_byte == byte {
                                     // Was it the last character of boundary?
-                                    if end - start_boundary == boundary.len() {
+                                    if end - start_boundary + 1 == boundary.len() {
                                         multipart_section = MultiPartSection::StartSuffix;
+                                        eprintln!("Moving on to multi-part start suffix");
                                     }
                                 } else {
+                                    eprintln!(
+                                        "Boundary byte {} does not match data {:?}({}) vs {:?}({}) in {:?}",
+                                        end - start_boundary,
+                                        *boundary_byte as char,
+                                        boundary_byte,
+                                        *byte as char,
+                                        byte,
+                                        str::from_utf8(boundary)
+                                    );
                                     multipart_section = MultiPartSection::Skipping;
+                                    eprintln!("Moving on to multi-part skipping");
                                 }
-                                
                             } else if byte == &0 {
                                 break;
                             } else {
+                                eprintln!("Failed to find boundary byte {}", end - start_boundary);
                                 multipart_section = MultiPartSection::Skipping;
+                                eprintln!("Moving on to multi-part skipping");
                             }
-                        },
+                        }
                         MultiPartSection::StartSuffix => {
                             if byte == &13 {
                                 last_was_carriage_return = true;
                             } else if byte == &10 && last_was_carriage_return {
                                 multipart_section = MultiPartSection::End;
+                                eprintln!("Moving on to multi-part end");
                                 last_was_carriage_return = false;
                                 start_data = end;
                             } else if byte == &0 {
@@ -528,42 +546,62 @@ impl Message {
                             } else {
                                 last_was_carriage_return = false;
                                 multipart_section = MultiPartSection::Skipping;
+                                eprintln!(
+                                    "Moving back to multi-part skipping, byte: {:?}({})",
+                                    *byte as char, byte
+                                );
                             }
-                        },
+                        }
                         MultiPartSection::End => {
                             if byte == &13 {
                                 last_was_carriage_return = true;
                             } else if byte == &10 && last_was_carriage_return {
                                 multipart_section = MultiPartSection::EndBoundary;
+                                eprintln!("Moving on to multi-part end");
                                 last_was_carriage_return = false;
+                                end_data = end - 1;
                                 start_boundary = end + 1;
                             } else if byte == &0 {
                                 break;
                             }
-                        },
+                        }
                         MultiPartSection::EndBoundary => {
                             // Does byte match next byte in boundary?
                             if let Some(boundary_byte) = boundary.get(end - start_boundary) {
                                 if boundary_byte == byte {
                                     // Was it the last character of boundary?
-                                    if end - start_boundary == boundary.len() {
-                                        multipart_section = MultiPartSection::StartSuffix;
+                                    if end - start_boundary + 1 == boundary.len() {
+                                        multipart_section = MultiPartSection::Skipping;
+                                        eprintln!("Moving on to multi-part skipping");
+                                    }
+
+                                    if start_data > 0
+                                        && start_data < end_data
+                                        && end_data < request.len()
+                                    {
+                                        let data = &request[start_data..end_data];
+                                        // TODO Do something here
+                                        eprintln!(
+                                            "Found data {:?} = {:?}",
+                                            str::from_utf8(data),
+                                            &data
+                                        );
+                                    } else {
+                                        eprintln!("Found no multipart data");
                                     }
                                 } else {
                                     multipart_section = MultiPartSection::Skipping;
+                                    eprintln!("Moving on to multi-part skipping");
                                 }
-                                
                             } else if byte == &0 {
                                 break;
                             } else {
                                 multipart_section = MultiPartSection::Skipping;
+                                eprintln!("Moving on to multi-part skipping");
                             }
-                        },
-                        MultiPartSection::EndSuffix => {
-                            // TODO -- or \r\n here
-                        },
+                        }
                     }
-                },
+                }
                 ParserMode::Lines => {
                     if byte == &13 {
                         last_was_carriage_return = true;
