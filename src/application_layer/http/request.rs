@@ -118,6 +118,15 @@ enum ParserSection {
     MessageBody,
 }
 
+enum MultiPartSection {
+    End,
+    EndBoundary,
+    EndSuffix,
+    Skipping,
+    Start,
+    StartSuffix,
+}
+
 enum ParserMode {
     Boundaries(Vec<u8>),
     Lines,
@@ -459,13 +468,13 @@ impl Message {
 
         // Parsing variables
         let mut section = ParserSection::Line;
-        let mut start = 0;
+        let mut start_boundary = 0;
         let mut end = 0;
+        let mut start_data = 0;
         let last_index = match request.len() { 0 => 0, _ => request.len() - 1 };
         let mut last_was_carriage_return = false;
-        let mut reading_boundary = true;
-        let mut binary_blob: Vec<u8> = Vec::new();
         let mut parser_mode = ParserMode::Lines;
+        let mut multipart_section = MultiPartSection::Skipping;
 
         eprintln!(
             "Starting parsing of {:?} = {:?}",
@@ -475,31 +484,86 @@ impl Message {
         for byte in request.iter() {
             match parser_mode {
                 ParserMode::Boundaries(ref boundary) => {
-                    if byte == &13 {
-                        last_was_carriage_return = true;
-                    } else if byte == &10 && last_was_carriage_return {
-                        reading_boundary = true;
-                        start = end;
-                        last_was_carriage_return = false;
-                    } else if reading_boundary {
-                        // Does byte match next byte in boundary?
-                        if let Some(_) = boundary.get(end - start) {
-                            reading_boundary = false;
-                        } else {
-                            binary_blob.push(*byte);
-                        }
-                        last_was_carriage_return = false;
-                    } else if byte == &0 || end == last_index {
-                        if end == last_index {
-                            binary_blob.push(*byte);
-                        }
-                        // TODO Do something here
-                        break;
-                    } else {
-                        binary_blob.push(*byte);
-                        last_was_carriage_return = false;
+                    match multipart_section {
+                        MultiPartSection::Skipping => {
+                            if byte == &13 {
+                                last_was_carriage_return = true;
+                            } else if byte == &10 && last_was_carriage_return {
+                                multipart_section = MultiPartSection::Start;
+                                start_boundary = end + 1;
+                                last_was_carriage_return = false;
+                            } else if byte == &0 {
+                                break;
+                            } else {
+                                last_was_carriage_return = false;
+                            }
+                        },
+                        MultiPartSection::Start => {
+                            // Does byte match next byte in boundary?
+                            if let Some(boundary_byte) = boundary.get(end - start_boundary) {
+                                if boundary_byte == byte {
+                                    // Was it the last character of boundary?
+                                    if end - start_boundary == boundary.len() {
+                                        multipart_section = MultiPartSection::StartSuffix;
+                                    }
+                                } else {
+                                    multipart_section = MultiPartSection::Skipping;
+                                }
+                                
+                            } else if byte == &0 {
+                                break;
+                            } else {
+                                multipart_section = MultiPartSection::Skipping;
+                            }
+                        },
+                        MultiPartSection::StartSuffix => {
+                            if byte == &13 {
+                                last_was_carriage_return = true;
+                            } else if byte == &10 && last_was_carriage_return {
+                                multipart_section = MultiPartSection::End;
+                                last_was_carriage_return = false;
+                                start_data = end;
+                            } else if byte == &0 {
+                                break;
+                            } else {
+                                last_was_carriage_return = false;
+                                multipart_section = MultiPartSection::Skipping;
+                            }
+                        },
+                        MultiPartSection::End => {
+                            if byte == &13 {
+                                last_was_carriage_return = true;
+                            } else if byte == &10 && last_was_carriage_return {
+                                multipart_section = MultiPartSection::EndBoundary;
+                                last_was_carriage_return = false;
+                                start_boundary = end + 1;
+                            } else if byte == &0 {
+                                break;
+                            }
+                        },
+                        MultiPartSection::EndBoundary => {
+                            // Does byte match next byte in boundary?
+                            if let Some(boundary_byte) = boundary.get(end - start_boundary) {
+                                if boundary_byte == byte {
+                                    // Was it the last character of boundary?
+                                    if end - start_boundary == boundary.len() {
+                                        multipart_section = MultiPartSection::StartSuffix;
+                                    }
+                                } else {
+                                    multipart_section = MultiPartSection::Skipping;
+                                }
+                                
+                            } else if byte == &0 {
+                                break;
+                            } else {
+                                multipart_section = MultiPartSection::Skipping;
+                            }
+                        },
+                        MultiPartSection::EndSuffix => {
+                            // TODO -- or \r\n here
+                        },
                     }
-                }
+                },
                 ParserMode::Lines => {
                     if byte == &13 {
                         last_was_carriage_return = true;
