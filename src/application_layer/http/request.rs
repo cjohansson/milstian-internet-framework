@@ -594,22 +594,23 @@ impl Message {
                                     if end - start_boundary + 1 == boundary.len() {
                                         multipart_section = MultiPartSection::Skipping;
                                         eprintln!("Moving on to multi-part skipping");
+
+                                        if start_data > 0
+                                            && start_data < end_data
+                                            && end_data < request.len()
+                                        {
+                                            let data = &request[start_data..end_data];
+                                            // TODO Do something here
+                                            eprintln!(
+                                                "Found data {:?} = {:?}",
+                                                str::from_utf8(data),
+                                                &data
+                                            );
+                                        } else {
+                                            eprintln!("Found no multipart data");
+                                        }
                                     }
 
-                                    if start_data > 0
-                                        && start_data < end_data
-                                        && end_data < request.len()
-                                    {
-                                        let data = &request[start_data..end_data];
-                                        // TODO Do something here
-                                        eprintln!(
-                                            "Found data {:?} = {:?}",
-                                            str::from_utf8(data),
-                                            &data
-                                        );
-                                    } else {
-                                        eprintln!("Found no multipart data");
-                                    }
                                 } else {
                                     multipart_section = MultiPartSection::End;
                                     eprintln!(
