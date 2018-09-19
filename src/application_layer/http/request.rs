@@ -478,7 +478,7 @@ impl Message {
         };
         let mut last_was_carriage_return = false;
         let mut parser_mode = ParserMode::Lines;
-        let mut multipart_section = MultiPartSection::Skipping;
+        let mut multipart_section = MultiPartSection::Start;
 
         eprintln!(
             "Starting parsing of {:?} = {:?}",
@@ -496,7 +496,7 @@ impl Message {
                                 multipart_section = MultiPartSection::Start;
                                 start_boundary = end + 1;
                                 last_was_carriage_return = false;
-                                eprintln!("Moving on to multi-part start");
+                                eprintln!("Found \\r\\n - moving on to multi-part start");
                             } else if byte == &0 {
                                 break;
                             } else {
@@ -507,6 +507,17 @@ impl Message {
                             // Does byte match next byte in boundary?
                             if let Some(boundary_byte) = boundary.get(end - start_boundary) {
                                 if boundary_byte == byte {
+
+                                    eprintln!(
+                                        "Boundary byte {} matches data {:?}({}) vs {:?}({}) in {:?}",
+                                        end - start_boundary,
+                                        *boundary_byte as char,
+                                        boundary_byte,
+                                        *byte as char,
+                                        byte,
+                                        str::from_utf8(boundary)
+                                    );
+
                                     // Was it the last character of boundary?
                                     if end - start_boundary + 1 == boundary.len() {
                                         multipart_section = MultiPartSection::StartSuffix;
@@ -538,7 +549,7 @@ impl Message {
                                 last_was_carriage_return = true;
                             } else if byte == &10 && last_was_carriage_return {
                                 multipart_section = MultiPartSection::End;
-                                eprintln!("Moving on to multi-part end");
+                                eprintln!("Found \\r\\n - moving on to multi-part end");
                                 last_was_carriage_return = false;
                                 start_data = end;
                             } else if byte == &0 {
@@ -557,7 +568,7 @@ impl Message {
                                 last_was_carriage_return = true;
                             } else if byte == &10 && last_was_carriage_return {
                                 multipart_section = MultiPartSection::EndBoundary;
-                                eprintln!("Moving on to multi-part end");
+                                eprintln!("Moving on to multi-part end boundary");
                                 last_was_carriage_return = false;
                                 end_data = end - 1;
                                 start_boundary = end + 1;
@@ -569,6 +580,16 @@ impl Message {
                             // Does byte match next byte in boundary?
                             if let Some(boundary_byte) = boundary.get(end - start_boundary) {
                                 if boundary_byte == byte {
+                                    eprintln!(
+                                        "Boundary byte {} matches data {:?}({}) vs {:?}({}) in {:?}",
+                                        end - start_boundary,
+                                        *boundary_byte as char,
+                                        boundary_byte,
+                                        *byte as char,
+                                        byte,
+                                        str::from_utf8(boundary)
+                                    );
+
                                     // Was it the last character of boundary?
                                     if end - start_boundary + 1 == boundary.len() {
                                         multipart_section = MultiPartSection::Skipping;
@@ -590,14 +611,23 @@ impl Message {
                                         eprintln!("Found no multipart data");
                                     }
                                 } else {
-                                    multipart_section = MultiPartSection::Skipping;
-                                    eprintln!("Moving on to multi-part skipping");
+                                    multipart_section = MultiPartSection::End;
+                                    eprintln!(
+                                        "Boundary byte {} does not match data {:?}({}) vs {:?}({}) in {:?}",
+                                        end - start_boundary,
+                                        *boundary_byte as char,
+                                        boundary_byte,
+                                        *byte as char,
+                                        byte,
+                                        str::from_utf8(boundary)
+                                    );
                                 }
                             } else if byte == &0 {
                                 break;
                             } else {
-                                multipart_section = MultiPartSection::Skipping;
-                                eprintln!("Moving on to multi-part skipping");
+                                eprintln!("Failed to find boundary byte {}", end - start_boundary);
+                                multipart_section = MultiPartSection::End;
+                                eprintln!("Failed to find boundary byte. Moving back to multi-part end");
                             }
                         }
                     }
@@ -620,6 +650,7 @@ impl Message {
                                 &mut parser_mode,
                             );
                             start = end + 1;
+                            start_boundary = end + 1;
                         } else {
                             eprintln!(
                                 "Failed to utf8 encode line {:?}",
@@ -974,7 +1005,7 @@ mod request_test {
         assert!(response.is_none());
 
         // Multi-part with form-data
-        let response = Message::from_tcp_stream(b"POST /?test=1 HTTP/1.1\r\nHost: localhost:8888\r\nUser-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:63.0) Gecko/20100101 Firefox/63.0\r\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\nAccept-Language: en-US,en;q=0.5\r\nAccept-Encoding: gzip, deflate\r\nReferer: http://localhost:8888/?test=1\r\nContent-Type: multipart/form-data; boundary=---------------------------11296377662066493682306290443\r\nContent-Length: 4123883\r\nDNT: 1\r\nConnection: keep-alive\r\nUpgrade-Insecure-Requests: 1\r\nPragma: no-cache\r\nCache-Control: no-cache\r\n\r\n-----------------------------11296377662066493682306290443\r\nContent-Disposition: form-data; name=\"file\"; filename=\"FL_insurance_sample.csv\"\r\nContent-Type: text/csv\r\n\r\npolicyID,statecode,county,eq_site_limit,hu_site_limit,fl_site_limit,fr_site_limit,tiv_2011,tiv_2012,eq_site_deductible,hu_site_deductible,fl_site_deductible,fr_site_deductible,point_latitude,point_longitude,line,construction,point_granularity\r\n119736,FL,CLAY COUNTY,498960,498960,498960,498960,498960,792148.9,0,9979.2,0,0,30.102261,-81.711777,Residential,Masonry,1\r\n448094,FL,CLAY COUNTY,1322376.3,1322376.3,1322376.3,1322376.3,1322376.3,1438163.57,0,0,0,0,30.063936,-81.707664,Residential,Masonry,3\r\n---------------------------11296377662066493682306290443--\r\n");
+        let response = Message::from_tcp_stream(b"POST /?test=1 HTTP/1.1\r\nHost: localhost:8888\r\nUser-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:63.0) Gecko/20100101 Firefox/63.0\r\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\nAccept-Language: en-US,en;q=0.5\r\nAccept-Encoding: gzip, deflate\r\nReferer: http://localhost:8888/?test=1\r\nContent-Type: multipart/form-data; boundary=---------------------------11296377662066493682306290443\r\nContent-Length: 4123883\r\nDNT: 1\r\nConnection: keep-alive\r\nUpgrade-Insecure-Requests: 1\r\nPragma: no-cache\r\nCache-Control: no-cache\r\n\r\n---------------------------11296377662066493682306290443\r\nContent-Disposition: form-data; name=\"file\"; filename=\"FL_insurance_sample.csv\"\r\nContent-Type: text/csv\r\n\r\npolicyID,statecode,county,eq_site_limit,hu_site_limit,fl_site_limit,fr_site_limit,tiv_2011,tiv_2012,eq_site_deductible,hu_site_deductible,fl_site_deductible,fr_site_deductible,point_latitude,point_longitude,line,construction,point_granularity\r\n119736,FL,CLAY COUNTY,498960,498960,498960,498960,498960,792148.9,0,9979.2,0,0,30.102261,-81.711777,Residential,Masonry,1\r\n448094,FL,CLAY COUNTY,1322376.3,1322376.3,1322376.3,1322376.3,1322376.3,1438163.57,0,0,0,0,30.063936,-81.707664,Residential,Masonry,3\r\n---------------------------11296377662066493682306290443--\r\n");
         assert!(response.is_some());
         let response_unwrapped = response.expect("multipart");
         if let BodyContentType::MultiPart(body) = response_unwrapped.body {
