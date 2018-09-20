@@ -214,62 +214,48 @@ impl Message {
         }
     }
 
-    // TODO Remove this function
-    fn get_query_args_from_multipart_string(
-        subject: &str,
-        boundary: &str,
-    ) -> Option<HashMap<String, MultiPartValue>> {
+    fn get_query_args_from_multipart_blob(
+        data: &[u8]
+    ) -> Option<(String, MultiPartValue)> {
         let mut args: HashMap<String, MultiPartValue> = HashMap::new();
-        if !subject.is_empty() {
-            // For each bounded object...
-            let arguments: Vec<&str> = subject.split(&boundary).collect();
-            for argument in arguments {
-                let mut headers: HashMap<String, HeaderValueParts> = HashMap::new();
-                let mut body: Vec<u8> = Vec::new();
-
-                // For each line within bounded object
-                let parts: Vec<&str> = argument.splitn(2, "\r\n\r\n").collect();
-                let mut section = ParserSection::HeaderFields;
-                for part in parts {
-                    match section {
-                        ParserSection::HeaderFields => {
-                            for line in part.lines() {
-                                if !line.is_empty() && line != "--" {
-                                    if let Some((header_key, header_value)) =
-                                        Message::get_header_field(line)
-                                    {
-                                        headers.insert(header_key, header_value);
-                                    }
-                                }
-                            }
-                            if headers.len() > 0 {
-                                section = ParserSection::MessageBody;
-                            }
+        let mut headers: HashMap<String, HeaderValueParts> = HashMap::new();
+        let mut body: Vec<u8> = Vec::new();
+        let mut last_was_carriage_return = false;
+        let mut index = 0;
+        let mut start = 0;
+        for byte in data.iter() {
+            if byte == &10 && last_was_carriage_return {
+                
+            } else if byte == &13 {
+                last_was_carriage_return = true;
+                if let Ok(utf8_line) = str::from_utf8(&data[start..index]) {
+                    if utf8_line.is_empty() {
+                        break;
+                    } else {
+                        if let Some((header_key, header_value)) =
+                            Message::get_header_field(utf8_line)
+                        {
+                            headers.insert(header_key, header_value);
                         }
-                        ParserSection::MessageBody => {
-                            body = part.trim_right().as_bytes().to_vec();
-                            break;
-                        }
-                        _ => (),
                     }
+                    start = index + 1;
                 }
-
-                // Did we find a name within the content-disposition header?
-                let mut name: String = String::new();
-                if let Some(content_disposition) = headers.get("Content-Disposition") {
-                    if let Some(content_disposition_name) =
-                        content_disposition.get_key_value("name")
-                    {
-                        name = content_disposition_name.trim_matches('"').to_string()
-                    }
-                }
-                if !name.is_empty() && !body.is_empty() {
-                    args.insert(name, MultiPartValue { body, headers });
-                }
+            } else {
+                last_was_carriage_return = false;
             }
         }
-        if args.len() > 0 {
-            return Some(args);
+
+        // Did we find a name within the content-disposition header?
+        if let Some(content_disposition) = headers.get("Content-Disposition") {
+            if let Some(content_disposition_name) =
+                content_disposition.get_key_value("name")
+            {
+                let name = content_disposition_name.trim_matches('"').to_string();
+                if !name.is_empty() {
+                    let value = &data[start..];
+                    return Some((name, MultiPartValue { body, headers }));
+                }
+            }
         }
         None
     }
@@ -449,7 +435,6 @@ impl Message {
         None
     }
 
-    // TODO Rebuild this to work binary instead
     pub fn from_tcp_stream(request: &[u8]) -> Option<Message> {
         // Temporary message
         let mut message = Message {
@@ -601,12 +586,17 @@ impl Message {
                                         && end_data < request.len()
                                     {
                                         let data = &request[start_data..end_data];
-                                        // TODO Do something here
                                         eprintln!(
                                             "Found data {:?} = {:?}",
                                             str::from_utf8(data),
                                             &data
                                         );
+                                        if let Some((query_key, query_value)) = Message::get_query_args_from_multipart_blob(&data) {
+                                            // TODO Do something here
+                                            eprintln!("Found multi-part data: {} = {:?}", query_key, query_value);
+                                        } else {
+                                            eprintln!("Failed to find multi-part data");
+                                        }
                                     } else {
                                         eprintln!("Found no multipart data");
                                     }
