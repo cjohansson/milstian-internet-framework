@@ -246,15 +246,19 @@ impl Message {
         }
 
         // Did we find a name within the content-disposition header?
+        let mut name = String::new();
         if let Some(content_disposition) = headers.get("Content-Disposition") {
             if let Some(content_disposition_name) =
                 content_disposition.get_key_value("name")
             {
-                let name = content_disposition_name.trim_matches('"').to_string();
-                if !name.is_empty() {
-                    let value = &data[start..];
-                    return Some((name, MultiPartValue { body, headers }));
-                }
+                name = content_disposition_name.trim_matches('"').to_string();
+                
+            }
+        }
+        if !name.is_empty() {
+            let body = data[start..].to_vec();
+            if !body.is_empty() {
+                return Some((name, MultiPartValue { body, headers }));
             }
         }
         None
@@ -289,22 +293,11 @@ impl Message {
         }
     }
 
-    // TODO Change this function
     pub fn get_message_body(
-        body: &str,
-        content_type: &HeaderContentType,
+        body: &str
     ) -> Option<BodyContentType> {
-        match content_type {
-            HeaderContentType::SinglePart => {
-                if let Some(body) = Message::get_query_args_from_string(body) {
-                    return Some(BodyContentType::SinglePart(body));
-                }
-            }
-            HeaderContentType::MultiPart(boundary) => {
-                if let Some(body) = Message::get_query_args_from_multipart_string(body, boundary) {
-                    return Some(BodyContentType::MultiPart(body));
-                }
-            }
+        if let Some(body) = Message::get_query_args_from_string(body) {
+            return Some(BodyContentType::SinglePart(body));
         }
         None
     }
@@ -732,7 +725,7 @@ impl Message {
             ParserSection::MessageBody => {
                 if !line.is_empty() {
                     if let Some(body_args) =
-                        Message::get_message_body(line, &HeaderContentType::SinglePart)
+                        Message::get_message_body(line)
                     {
                         eprintln!("Successfully parsed body {:?}", &body_args);
                         message.body = body_args;
@@ -751,8 +744,7 @@ mod request_test {
 
     #[test]
     fn test_get_message_body_single_part() {
-        let content_type = HeaderContentType::SinglePart;
-        let response = Message::get_message_body("random=abc&hej=def&def", &content_type);
+        let response = Message::get_message_body("random=abc&hej=def&def");
         assert!(response.is_some());
 
         let response_unwrapped = response.unwrap();
@@ -781,16 +773,13 @@ mod request_test {
             assert!(response_unwrapped.get(&"defs".to_string()).is_none());
         }
 
-        let response = Message::get_message_body("", &content_type);
+        let response = Message::get_message_body("");
         assert!(response.is_none());
     }
 
     #[test]
     fn test_get_message_body_multi_part() {
-        let content_type = HeaderContentType::MultiPart(
-            "-----------------------------208201381313076108731815782760".to_string(),
-        );
-        let response = Message::get_message_body("-----------------------------208201381313076108731815782760\r\nContent-Disposition: form-data; name=\"losen\"\r\n\r\nabc123-----------------------------208201381313076108731815782760\r\nContent-Disposition: form-data; name=\"size\"\r\n\r\nfalse\r\n-----------------------------208201381313076108731815782760--", &content_type);
+        let response = Message::get_message_body("-----------------------------208201381313076108731815782760\r\nContent-Disposition: form-data; name=\"losen\"\r\n\r\nabc123-----------------------------208201381313076108731815782760\r\nContent-Disposition: form-data; name=\"size\"\r\n\r\nfalse\r\n-----------------------------208201381313076108731815782760--");
         assert!(response.is_some());
 
         let response_unwrapped = response.unwrap();
@@ -820,7 +809,7 @@ mod request_test {
             );
         }
 
-        let response = Message::get_message_body("", &content_type);
+        let response = Message::get_message_body("");
         assert!(response.is_none());
     }
 
