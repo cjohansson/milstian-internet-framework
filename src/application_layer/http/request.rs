@@ -223,7 +223,8 @@ impl Message {
             if byte == &10 && last_was_carriage_return {
                 last_was_carriage_return = false;
                 if let Ok(utf8_line) = str::from_utf8(&data[start..index]) {
-                    if utf8_line.is_empty() {
+                    if utf8_line.trim().is_empty() {
+                        start = index + 1;
                         break;
                     } else {
                         if let Some((header_key, header_value)) =
