@@ -572,27 +572,28 @@ impl Message {
                                     if end - start_boundary + 1 == boundary.len() {
                                         multipart_section = MultiPartSection::Skipping;
                                         eprintln!("Moving on to multi-part skipping");
+
+                                        if start_data > 0
+                                            && start_data < end_data
+                                            && end_data < request.len()
+                                        {
+                                            let data = &request[start_data..end_data];
+                                            eprintln!(
+                                                "Found data {:?} = {:?}",
+                                                str::from_utf8(data),
+                                                &data
+                                            );
+                                            if let Some((query_key, query_value)) = Message::get_query_args_from_multipart_blob(&data) {
+                                                // TODO Do something here
+                                                eprintln!("Found multi-part data: {} = {:?}", query_key, query_value);
+                                            } else {
+                                                eprintln!("Failed to find multi-part data");
+                                            }
+                                        } else {
+                                            eprintln!("Found no multipart data");
+                                        }
                                     }
 
-                                    if start_data > 0
-                                        && start_data < end_data
-                                        && end_data < request.len()
-                                    {
-                                        let data = &request[start_data..end_data];
-                                        eprintln!(
-                                            "Found data {:?} = {:?}",
-                                            str::from_utf8(data),
-                                            &data
-                                        );
-                                        if let Some((query_key, query_value)) = Message::get_query_args_from_multipart_blob(&data) {
-                                            // TODO Do something here
-                                            eprintln!("Found multi-part data: {} = {:?}", query_key, query_value);
-                                        } else {
-                                            eprintln!("Failed to find multi-part data");
-                                        }
-                                    } else {
-                                        eprintln!("Found no multipart data");
-                                    }
                                 } else {
                                     multipart_section = MultiPartSection::End;
                                     eprintln!(
