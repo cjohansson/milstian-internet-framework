@@ -214,20 +214,14 @@ impl Message {
         }
     }
 
-    fn get_query_args_from_multipart_blob(
-        data: &[u8]
-    ) -> Option<(String, MultiPartValue)> {
-        let mut args: HashMap<String, MultiPartValue> = HashMap::new();
+    fn get_query_args_from_multipart_blob(data: &[u8]) -> Option<(String, MultiPartValue)> {
         let mut headers: HashMap<String, HeaderValueParts> = HashMap::new();
-        let mut body: Vec<u8> = Vec::new();
         let mut last_was_carriage_return = false;
         let mut index = 0;
         let mut start = 0;
         for byte in data.iter() {
             if byte == &10 && last_was_carriage_return {
-                
-            } else if byte == &13 {
-                last_was_carriage_return = true;
+                last_was_carriage_return = false;
                 if let Ok(utf8_line) = str::from_utf8(&data[start..index]) {
                     if utf8_line.is_empty() {
                         break;
@@ -240,19 +234,19 @@ impl Message {
                     }
                     start = index + 1;
                 }
+            } else if byte == &13 {
+                last_was_carriage_return = true;
             } else {
                 last_was_carriage_return = false;
             }
+            index = index + 1;
         }
 
         // Did we find a name within the content-disposition header?
         let mut name = String::new();
         if let Some(content_disposition) = headers.get("Content-Disposition") {
-            if let Some(content_disposition_name) =
-                content_disposition.get_key_value("name")
-            {
+            if let Some(content_disposition_name) = content_disposition.get_key_value("name") {
                 name = content_disposition_name.trim_matches('"').to_string();
-                
             }
         }
         if !name.is_empty() {
@@ -293,9 +287,7 @@ impl Message {
         }
     }
 
-    pub fn get_message_body(
-        body: &str
-    ) -> Option<BodyContentType> {
+    pub fn get_message_body(body: &str) -> Option<BodyContentType> {
         if let Some(body) = Message::get_query_args_from_string(body) {
             return Some(BodyContentType::SinglePart(body));
         }
@@ -458,11 +450,11 @@ impl Message {
         let mut parser_mode = ParserMode::Lines;
         let mut multipart_section = MultiPartSection::Start;
 
-        eprintln!(
+        /*eprintln!(
             "Starting parsing of {:?} = {:?}",
             &request,
             str::from_utf8(&request)
-        );
+        );*/
         for byte in request.iter() {
             match parser_mode {
                 ParserMode::Boundaries(ref boundary) => {
@@ -474,7 +466,7 @@ impl Message {
                                 multipart_section = MultiPartSection::Start;
                                 start_boundary = end + 1;
                                 last_was_carriage_return = false;
-                                eprintln!("Found \\r\\n - moving on to multi-part start");
+                            //eprintln!("Found \\r\\n - moving on to multi-part start");
                             } else if byte == &0 {
                                 break;
                             } else {
@@ -485,8 +477,7 @@ impl Message {
                             // Does byte match next byte in boundary?
                             if let Some(boundary_byte) = boundary.get(end - start_boundary) {
                                 if boundary_byte == byte {
-
-                                    eprintln!(
+                                    /*eprintln!(
                                         "Boundary byte {} matches data {:?}({}) vs {:?}({}) in {:?}",
                                         end - start_boundary,
                                         *boundary_byte as char,
@@ -494,15 +485,15 @@ impl Message {
                                         *byte as char,
                                         byte,
                                         str::from_utf8(boundary)
-                                    );
+                                    );*/
 
                                     // Was it the last character of boundary?
                                     if end - start_boundary + 1 == boundary.len() {
                                         multipart_section = MultiPartSection::StartSuffix;
-                                        eprintln!("Moving on to multi-part start suffix");
+                                        // eprintln!("Moving on to multi-part start suffix");
                                     }
                                 } else {
-                                    eprintln!(
+                                    /* eprintln!(
                                         "Boundary byte {} does not match data {:?}({}) vs {:?}({}) in {:?}",
                                         end - start_boundary,
                                         *boundary_byte as char,
@@ -510,16 +501,16 @@ impl Message {
                                         *byte as char,
                                         byte,
                                         str::from_utf8(boundary)
-                                    );
+                                    );*/
                                     multipart_section = MultiPartSection::Skipping;
-                                    eprintln!("Moving on to multi-part skipping");
+                                    // eprintln!("Moving on to multi-part skipping");
                                 }
                             } else if byte == &0 {
                                 break;
                             } else {
-                                eprintln!("Failed to find boundary byte {}", end - start_boundary);
+                                // eprintln!("Failed to find boundary byte {}", end - start_boundary);
                                 multipart_section = MultiPartSection::Skipping;
-                                eprintln!("Moving on to multi-part skipping");
+                                // eprintln!("Moving on to multi-part skipping");
                             }
                         }
                         MultiPartSection::StartSuffix => {
@@ -527,7 +518,7 @@ impl Message {
                                 last_was_carriage_return = true;
                             } else if byte == &10 && last_was_carriage_return {
                                 multipart_section = MultiPartSection::End;
-                                eprintln!("Found \\r\\n - moving on to multi-part end");
+                                // eprintln!("Found \\r\\n - moving on to multi-part end");
                                 last_was_carriage_return = false;
                                 start_data = end;
                             } else if byte == &0 {
@@ -535,10 +526,10 @@ impl Message {
                             } else {
                                 last_was_carriage_return = false;
                                 multipart_section = MultiPartSection::Skipping;
-                                eprintln!(
+                                /* eprintln!(
                                     "Moving back to multi-part skipping, byte: {:?}({})",
                                     *byte as char, byte
-                                );
+                                );*/
                             }
                         }
                         MultiPartSection::End => {
@@ -546,7 +537,7 @@ impl Message {
                                 last_was_carriage_return = true;
                             } else if byte == &10 && last_was_carriage_return {
                                 multipart_section = MultiPartSection::EndBoundary;
-                                eprintln!("Moving on to multi-part end boundary");
+                                // eprintln!("Moving on to multi-part end boundary");
                                 last_was_carriage_return = false;
                                 end_data = end - 1;
                                 start_boundary = end + 1;
@@ -558,7 +549,7 @@ impl Message {
                             // Does byte match next byte in boundary?
                             if let Some(boundary_byte) = boundary.get(end - start_boundary) {
                                 if boundary_byte == byte {
-                                    eprintln!(
+                                    /* eprintln!(
                                         "Boundary byte {} matches data {:?}({}) vs {:?}({}) in {:?}",
                                         end - start_boundary,
                                         *boundary_byte as char,
@@ -566,37 +557,42 @@ impl Message {
                                         *byte as char,
                                         byte,
                                         str::from_utf8(boundary)
-                                    );
+                                    );*/
 
                                     // Was it the last character of boundary?
                                     if end - start_boundary + 1 == boundary.len() {
                                         multipart_section = MultiPartSection::Skipping;
-                                        eprintln!("Moving on to multi-part skipping");
+                                        // eprintln!("Moving on to multi-part skipping");
 
                                         if start_data > 0
                                             && start_data < end_data
                                             && end_data < request.len()
                                         {
                                             let data = &request[start_data..end_data];
-                                            eprintln!(
+                                            /* eprintln!(
                                                 "Found data {:?} = {:?}",
                                                 str::from_utf8(data),
                                                 &data
-                                            );
-                                            if let Some((query_key, query_value)) = Message::get_query_args_from_multipart_blob(&data) {
-                                                // TODO Do something here
-                                                eprintln!("Found multi-part data: {} = {:?}", query_key, query_value);
+                                            ); */
+                                            if let Some((query_key, query_value)) =
+                                                Message::get_query_args_from_multipart_blob(&data)
+                                            {
+                                                /* eprintln!("Found multi-part data: {} = {:?}", query_key, query_value); */
+                                                if let BodyContentType::MultiPart(ref mut values) =
+                                                    message.body
+                                                {
+                                                    values.insert(query_key, query_value);
+                                                }
                                             } else {
-                                                eprintln!("Failed to find multi-part data");
+                                                // eprintln!("Failed to find multi-part data");
                                             }
                                         } else {
-                                            eprintln!("Found no multipart data");
+                                            // eprintln!("Found no multipart data");
                                         }
                                     }
-
                                 } else {
                                     multipart_section = MultiPartSection::End;
-                                    eprintln!(
+                                    /* eprintln!(
                                         "Boundary byte {} does not match data {:?}({}) vs {:?}({}) in {:?}",
                                         end - start_boundary,
                                         *boundary_byte as char,
@@ -604,14 +600,14 @@ impl Message {
                                         *byte as char,
                                         byte,
                                         str::from_utf8(boundary)
-                                    );
+                                    ); */
                                 }
                             } else if byte == &0 {
                                 break;
                             } else {
-                                eprintln!("Failed to find boundary byte {}", end - start_boundary);
+                                // eprintln!("Failed to find boundary byte {}", end - start_boundary);
                                 multipart_section = MultiPartSection::End;
-                                eprintln!("Failed to find boundary byte. Moving back to multi-part end");
+                                // eprintln!("Failed to find boundary byte. Moving back to multi-part end");
                             }
                         }
                     }
@@ -622,11 +618,11 @@ impl Message {
                     } else if byte == &10 && last_was_carriage_return {
                         let clean_end = end - 1;
                         if let Ok(utf8_line) = str::from_utf8(&request[start..clean_end]) {
-                            eprintln!(
+                            /* eprintln!(
                                 "Found line {:?} from {:?}",
                                 &utf8_line,
                                 &request[start..clean_end]
-                            );
+                            ); */
                             Message::parse_line(
                                 &utf8_line,
                                 &mut section,
@@ -636,10 +632,10 @@ impl Message {
                             start = end + 1;
                             start_boundary = end + 1;
                         } else {
-                            eprintln!(
+                            /* eprintln!(
                                 "Failed to utf8 encode line {:?}",
                                 &request[start..clean_end]
-                            );
+                            ); */
                         }
                         last_was_carriage_return = false;
 
@@ -650,11 +646,11 @@ impl Message {
                             _ => end + 1,
                         };
                         if let Ok(utf8_line) = str::from_utf8(&request[start..clean_end]) {
-                            eprintln!(
+                            /* eprintln!(
                                 "Found line {:?} from {:?}",
                                 &utf8_line,
                                 &request[start..clean_end]
-                            );
+                            ); */
                             Message::parse_line(
                                 &utf8_line,
                                 &mut section,
@@ -662,10 +658,10 @@ impl Message {
                                 &mut parser_mode,
                             );
                         } else {
-                            eprintln!(
+                            /* eprintln!(
                                 "Failed to utf8 encode line {:?}",
                                 &request[start..clean_end]
-                            );
+                            ); */
                         }
                         break;
                     } else {
@@ -707,7 +703,8 @@ impl Message {
                     if let Some(content_type_header) = message.headers.get("Content-Type") {
                         if let Some(boundary) = content_type_header.get_key_value("boundary") {
                             *parser_mode = ParserMode::Boundaries(boundary.as_bytes().to_vec());
-                            eprintln!("Changing parser mode to boundaries: {}", &boundary);
+                            message.body = BodyContentType::MultiPart(HashMap::new());
+                            // eprintln!("Changing parser mode to boundaries: {}", &boundary);
                         }
                     }
 
@@ -715,7 +712,7 @@ impl Message {
                         != SettingValence::No
                     {
                         *section = ParserSection::MessageBody;
-                        eprintln!("Moving to message body section");
+                        // eprintln!("Moving to message body section");
                     }
                 } else {
                     if let Some((header_key, header_value)) = Message::get_header_field(line) {
@@ -725,13 +722,11 @@ impl Message {
             }
             ParserSection::MessageBody => {
                 if !line.is_empty() {
-                    if let Some(body_args) =
-                        Message::get_message_body(line)
-                    {
-                        eprintln!("Successfully parsed body {:?}", &body_args);
+                    if let Some(body_args) = Message::get_message_body(line) {
+                        // eprintln!("Successfully parsed body {:?}", &body_args);
                         message.body = body_args;
                     } else {
-                        eprintln!("Failed to parse body of {}", &line);
+                        // eprintln!("Failed to parse body of {}", &line);
                     }
                 }
             }
@@ -779,38 +774,33 @@ mod request_test {
     }
 
     #[test]
-    fn test_get_message_body_multi_part() {
-        let response = Message::get_message_body("-----------------------------208201381313076108731815782760\r\nContent-Disposition: form-data; name=\"losen\"\r\n\r\nabc123-----------------------------208201381313076108731815782760\r\nContent-Disposition: form-data; name=\"size\"\r\n\r\nfalse\r\n-----------------------------208201381313076108731815782760--");
+    fn test_get_query_args_from_multipart_blob() {
+        let response = Message::get_query_args_from_multipart_blob(b"Content-Disposition: form-data; name=\"losen\"\r\n\r\nabc123");
         assert!(response.is_some());
 
-        let response_unwrapped = response.unwrap();
-        if let BodyContentType::MultiPart(response_unwrapped) = response_unwrapped {
+        if let Some((query_key, query_value)) = response {
             assert_eq!(
-                response_unwrapped.get(&"losen".to_string()).unwrap().body,
-                b"abc123"
+                query_key,
+                "losen".to_string()
             );
             assert_eq!(
-                response_unwrapped
-                    .get(&"losen".to_string())
-                    .unwrap()
-                    .headers
-                    .get("Content-Disposition")
+                query_value.headers.get("Content-Disposition")
                     .unwrap()
                     .to_string(),
                 "form-data; name=\"losen\""
             );
             assert_eq!(
-                response_unwrapped.get(&"size".to_string()).unwrap().body,
-                b"false"
+                query_value.body,
+                b"abc123"
             );
         } else {
             panic!(
                 "Expected multipart body but received: {:?}",
-                response_unwrapped
+                response
             );
         }
 
-        let response = Message::get_message_body("");
+        let response = Message::get_query_args_from_multipart_blob(b"okasdokadsokasd oa skoasdk\r\nokadsokasdokoadskods\r\n123123");
         assert!(response.is_none());
     }
 
