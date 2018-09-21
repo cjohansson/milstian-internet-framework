@@ -48,49 +48,65 @@ impl Dispatcher {
                                 }
                             }
 
-                            if read_size < 512 || buffer.len() < config.tcp_limit {
+                            // If we reach the end of the buffer or buffer length exceeds TCP limit
+                            if read_size < 512 {
+                                break;
+                            }
+                            if buffer.len() > config.tcp_limit {
+                                println!(
+                                    "Accumulated buffer {} exceeds size {}, breaking parse",
+                                    buffer.len(),
+                                    config.tcp_limit
+                                );
                                 break;
                             }
                         }
                         Err(error) => {
-                            eprintln!("Failed to read from stream, error: {}", error);
+                            println!("Failed to read from TCP stream, error: {}", error);
                             break;
                         }
                     }
                 }
             }
-            let mut response = Vec::new();
 
-            let mut http_dispatcher = http::Dispatcher::new();
+            if buffer.len() > 0 {
+                let mut response = Vec::new();
+                let mut http_dispatcher = http::Dispatcher::new();
 
-            if http_dispatcher.matches(&buffer, &config, &socket) {
-                match http_dispatcher.respond(&buffer, &config, &socket, responders) {
-                    Ok(http_response) => {
-                        response = http_response;
-                    }
-                    Err(error) => {
-                        eprintln!("Got empty HTTP response! Error: {}", error);
-                    }
-                }
-            }
-
-            if !response.is_empty() {
-                match stream.write(&response) {
-                    Ok(_) => {
-                        if let Err(error) = stream.flush() {
-                            eprintln!("Failed to flush TCP stream, error: {}", error);
+                if http_dispatcher.matches(&buffer, &config, &socket) {
+                    match http_dispatcher.respond(&buffer, &config, &socket, responders) {
+                        Ok(http_response) => {
+                            response = http_response;
+                        }
+                        Err(error) => {
+                            println!("Got empty HTTP response! Error: {}", error);
                         }
                     }
-                    Err(error) => {
-                        eprintln!("Failed to write TCP stream, error: {}", error);
+                }
+
+                if !response.is_empty() {
+                    println!("Found non-empty HTTP response for TCP stream");
+                    match stream.write(&response) {
+                        Ok(_) => {
+                            if let Err(error) = stream.flush() {
+                                println!("Failed to flush TCP stream, error: {}", error);
+                            }
+                        }
+                        Err(error) => {
+                            println!("Failed to write TCP stream, error: {}", error);
+                        }
                     }
+                } else {
+                    println!(
+                        "Found no response for TCP request {:?}",
+                        str::from_utf8(&buffer)
+                    );
                 }
             } else {
-                eprintln!(
-                    "Found no response for TCP request {:?}",
-                    str::from_utf8(&buffer)
-                );
+                println!("Found empty TCP stream!");
             }
+        } else {
+            println!("Failed to read initial bytes from TCP stream");
         }
     }
 }

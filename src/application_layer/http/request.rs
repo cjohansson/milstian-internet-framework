@@ -254,7 +254,11 @@ impl Message {
             let body = data[start..].to_vec();
             if !body.is_empty() {
                 return Some((name, MultiPartValue { body, headers }));
+            } else {
+                eprintln!("Mutli-part body is empty");
             }
+        } else {
+            eprintln!("Multi-part name is empty in {:?}", headers);
         }
         None
     }
@@ -776,32 +780,58 @@ mod request_test {
 
     #[test]
     fn test_get_query_args_from_multipart_blob() {
-        let response = Message::get_query_args_from_multipart_blob(b"Content-Disposition: form-data; name=\"losen\"\r\n\r\nabc123");
+        let response = Message::get_query_args_from_multipart_blob(
+            b"Content-Disposition: form-data; name=\"losen\"\r\n\r\nabc\n123",
+        );
         assert!(response.is_some());
-
         if let Some((query_key, query_value)) = response {
+            assert_eq!(query_key, "losen".to_string());
             assert_eq!(
-                query_key,
-                "losen".to_string()
-            );
-            assert_eq!(
-                query_value.headers.get("Content-Disposition")
+                query_value
+                    .headers
+                    .get("Content-Disposition")
                     .unwrap()
                     .to_string(),
                 "form-data; name=\"losen\""
             );
-            assert_eq!(
-                query_value.body,
-                b"abc123"
-            );
+            assert_eq!(query_value.body, b"abc\n123");
         } else {
-            panic!(
-                "Expected multipart body but received: {:?}",
-                response
-            );
+            panic!("Expected multipart body but received: {:?}", response);
         }
 
-        let response = Message::get_query_args_from_multipart_blob(b"okasdokadsokasd oa skoasdk\r\nokadsokasdokoadskods\r\n123123");
+        let response = Message::get_query_args_from_multipart_blob(
+            b"Content-Disposition: form-data; name=\"file\"; filename=\"KeePassXC-2.3.1.dmg.sig\"\r\nContent-Type: application/octet-stream\r\n\r\n
+-----BEGIN PGP SIGNATURE-----
+
+iQEzBAABCAAdFiEEweTLo61406/YlPngt6ZvA7WQdqgFAlqfE5MACgkQt6ZvA7WQ
+dqgnEAgAjtdbsMPaULGXKX6H+fcsYeGEN8OjiUTNz+StwNDkDxhxB4MT0N0lYZ4L
+xUv86kwMdWAaxp8pvVWo6gWXTEM5gWmN302bBxkpbhBl9fnq6WdcCCDGs4GM5vHX
+lOrHXWTsK+8ayLNZ0dCcP054srAtMmJHscPiuUYPfvKSgLxl+JxkPC147EktCCzv
+5O+2AtQPwIEPuaMewFqP9KjaGOhWgAc0nauIKa0ASt9FXXrexq1EoZnoZ3ZQ0p/w
+/otAB2D27yQ4kv+X2Rn94Ky9W0lMT2MYEF+/tQH4aEKsdMBQ7REQtfLGFlEzTMB/
+BNUI5YCF3PV9MKr3N53vEVYvkbXLbw==
+=LO1E
+-----END PGP SIGNATURE-----
+");
+
+        assert!(response.is_some());
+        if let Some((query_key, query_value)) = response {
+            assert_eq!(query_key, "file".to_string());
+            assert_eq!(
+                query_value
+                    .headers
+                    .get("Content-Disposition")
+                    .unwrap()
+                    .to_string(),
+                "form-data; name=\"file\"; filename=\"KeePassXC-2.3.1.dmg.sig\""
+            );
+        } else {
+            panic!("Expected multipart body but received: {:?}", response);
+        }
+
+        let response = Message::get_query_args_from_multipart_blob(
+            b"okasdokadsokasd oa skoasdk\r\nokadsokasdokoadskods\r\n123123",
+        );
         assert!(response.is_none());
     }
 
