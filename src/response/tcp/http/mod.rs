@@ -4,12 +4,13 @@ pub mod filesystem;
 
 use std::net::SocketAddr;
 
-use application_layer::http;
-use application_layer::http::request;
+extern crate milstian_http;
+use milstian_http::request;
+
 use Config;
 
 pub struct Dispatcher {
-    pub request_message: Option<http::request::Message>,
+    pub request_message: Option<request::Message>,
 }
 
 impl Dispatcher {
@@ -22,7 +23,7 @@ impl Dispatcher {
 
 impl Dispatcher {
     pub fn matches(&mut self, request: &[u8], _config: &Config, _socket: &SocketAddr) -> bool {
-        if let Some(request_message) = http::request::Message::from_tcp_stream(request) {
+        if let Some(request_message) = request::Message::from_tcp_stream(request) {
             self.request_message = Some(request_message);
             return true;
         }

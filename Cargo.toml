@@ -2,6 +2,9 @@
 name = "milstian"
 version = "0.1.0"
 authors = ["Christian Johansson <christian@cvj.se>"]
+description = "A internet framework"
+license = "GPL-3.0-only"
 
 [dependencies]
 chrono = "0.4"
+milstian-http = "0.1.*"

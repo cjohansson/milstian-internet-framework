@@ -1,5 +1,7 @@
-use application_layer::http::request;
-use application_layer::http::response;
+extern crate milstian_http;
+use milstian_http::request;
+use milstian_http::response;
+
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use Config;
@@ -50,7 +52,9 @@ impl ResponderInterface for Responder {
 mod error_test {
     use super::*;
 
-    use application_layer::http::response;
+    extern crate milstian_http;
+    use milstian_http::response;
+
     use std::collections::HashMap;
     use std::net::{IpAddr, Ipv4Addr};
 
