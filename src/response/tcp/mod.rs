@@ -70,6 +70,7 @@ impl Dispatcher {
             }
 
             if buffer.len() > 0 {
+                // println!("Found non-empty TCP blog {:?} b= {:?}", str::from_utf8(&buffer), buffer);
                 let mut response = Vec::new();
                 let mut http_dispatcher = http::Dispatcher::new();
 

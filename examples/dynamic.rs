@@ -53,7 +53,7 @@ impl ResponderInterface for Responder {
                 BodyContentType::MultiPart(ref body) => match body.get(&"file".to_string()) {
                     Some(value) => match String::from_utf8(value.body.clone()) {
                         Ok(utf8_value) => utf8_value,
-                        _ => "no UTF-8 file data".to_string(),
+                        _ => format!("no UTF-8 file data in: {:?}", &value.body),
                     },
                     _ => format!("no file data in {:?}", request_message),
                 },

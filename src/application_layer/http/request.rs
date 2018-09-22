@@ -471,7 +471,7 @@ impl Message {
                                 multipart_section = MultiPartSection::Start;
                                 start_boundary = end + 1;
                                 last_was_carriage_return = false;
-                            //eprintln!("Found \\r\\n - moving on to multi-part start");
+                                // eprintln!("Found \\r\\n - moving on to multi-part start");
                             } else if byte == &0 {
                                 break;
                             } else {
@@ -496,6 +496,23 @@ impl Message {
                                     if end - start_boundary + 1 == boundary.len() {
                                         multipart_section = MultiPartSection::StartSuffix;
                                         // eprintln!("Moving on to multi-part start suffix");
+                                    }
+                                    
+                                } else if byte == &45
+                                    && start_boundary < end
+                                {
+                                    // eprintln!("Stepping back one byte for boundary start");
+                                    if let Some(boundary_byte) = boundary.get(end - start_boundary - 1) {
+                                        if boundary_byte == byte {
+                                            // eprintln!("Stepped back boundary byte matched");
+                                            start_boundary = start_boundary + 1;
+                                        } else {
+                                            // eprintln!("Stepped back boundary byte did not match");
+                                            multipart_section = MultiPartSection::Skipping;
+                                        }
+                                    } else {
+                                        // eprintln!("Failed to find stepped back boundary byte");
+                                        multipart_section = MultiPartSection::Skipping;
                                     }
                                 } else {
                                     /* eprintln!(
@@ -534,7 +551,7 @@ impl Message {
                                 /* eprintln!(
                                     "Moving back to multi-part skipping, byte: {:?}({})",
                                     *byte as char, byte
-                                );*/
+                                ); */
                             }
                         }
                         MultiPartSection::End => {
@@ -582,7 +599,7 @@ impl Message {
                                             if let Some((query_key, query_value)) =
                                                 Message::get_query_args_from_multipart_blob(&data)
                                             {
-                                                /* eprintln!("Found multi-part data: {} = {:?}", query_key, query_value); */
+                                                // eprintln!("Found multi-part data: {} = {:?}", query_key, query_value);
                                                 if let BodyContentType::MultiPart(ref mut values) =
                                                     message.body
                                                 {
@@ -594,6 +611,23 @@ impl Message {
                                         } else {
                                             // eprintln!("Found no multipart data");
                                         }
+                                    }
+                                    
+                                } else if byte == &45
+                                    && start_boundary < end
+                                {
+                                    // eprintln!("Stepping back one byte for end boundary start");
+                                    if let Some(boundary_byte) = boundary.get(end - start_boundary - 1) {
+                                        if boundary_byte == byte {
+                                            // eprintln!("Stepped back end boundary byte matched");
+                                            start_boundary = start_boundary + 1;
+                                        } else {
+                                            // eprintln!("Stepped back end boundary byte did not match");
+                                            multipart_section = MultiPartSection::End;
+                                        }
+                                    } else {
+                                        // eprintln!("Failed to find stepped back end boundary byte");
+                                        multipart_section = MultiPartSection::End;
                                     }
                                 } else {
                                     multipart_section = MultiPartSection::End;
@@ -1006,13 +1040,14 @@ BNUI5YCF3PV9MKr3N53vEVYvkbXLbw==
         assert!(response.is_none());
 
         // Multi-part with form-data
-        let response = Message::from_tcp_stream(b"POST /?test=1 HTTP/1.1\r\nHost: localhost:8888\r\nUser-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:63.0) Gecko/20100101 Firefox/63.0\r\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\nAccept-Language: en-US,en;q=0.5\r\nAccept-Encoding: gzip, deflate\r\nReferer: http://localhost:8888/?test=1\r\nContent-Type: multipart/form-data; boundary=---------------------------11296377662066493682306290443\r\nContent-Length: 4123883\r\nDNT: 1\r\nConnection: keep-alive\r\nUpgrade-Insecure-Requests: 1\r\nPragma: no-cache\r\nCache-Control: no-cache\r\n\r\n---------------------------11296377662066493682306290443\r\nContent-Disposition: form-data; name=\"file\"; filename=\"FL_insurance_sample.csv\"\r\nContent-Type: text/csv\r\n\r\npolicyID,statecode,county,eq_site_limit,hu_site_limit,fl_site_limit,fr_site_limit,tiv_2011,tiv_2012,eq_site_deductible,hu_site_deductible,fl_site_deductible,fr_site_deductible,point_latitude,point_longitude,line,construction,point_granularity\r\n119736,FL,CLAY COUNTY,498960,498960,498960,498960,498960,792148.9,0,9979.2,0,0,30.102261,-81.711777,Residential,Masonry,1\r\n448094,FL,CLAY COUNTY,1322376.3,1322376.3,1322376.3,1322376.3,1322376.3,1438163.57,0,0,0,0,30.063936,-81.707664,Residential,Masonry,3\r\n---------------------------11296377662066493682306290443--\r\n");
+        let response = Message::from_tcp_stream(b"POST /?test=abcdef HTTP/1.1\r\nHost: localhost:8888\r\nUser-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:63.0) Gecko/20100101 Firefox/63.0\r\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\nAccept-Language: en-US,en;q=0.5\r\nAccept-Encoding: gzip, deflate\r\nReferer: http://localhost:8888/?test=abcdef\r\nContent-Type: multipart/form-data; boundary=---------------------------5072966556248019951999579782\r\nContent-Length: 733\r\nDNT: 1\r\nConnection: keep-alive\r\nUpgrade-Insecure-Requests: 1\r\nPragma: no-cache\r\nCache-Control: no-cache\r\n\r\n-----------------------------5072966556248019951999579782\r\nContent-Disposition: form-data; name=\"file\"; filename=\"KeePassXC-2.3.1.dmg.sig\"\r\nContent-Type: application/octet-stream\r\n\r\n-----BEGIN PGP SIGNATURE-----\n\niQEzBAABCAAdFiEEweTLo61406/YlPngt6ZvA7WQdqgFAlqfE5MACgkQt6ZvA7WQ\ndqgnEAgAjtdbsMPaULGXKX6H+fcsYeGEN8OjiUTNz+StwNDkDxhxB4MT0N0lYZ4L\nxUv86kwMdWAaxp8pvVWo6gWXTEM5gWmN302bBxkpbhBl9fnq6WdcCCDGs4GM5vHX\nlOrHXWTsK+8ayLNZ0dCcP054srAtMmJHscPiuUYPfvKSgLxl+JxkPC147EktCCzv\n5O+2AtQPwIEPuaMewFqP9KjaGOhWgAc0nauIKa0ASt9FXXrexq1EoZnoZ3ZQ0p/w\n/otAB2D27yQ4kv+X2Rn94Ky9W0lMT2MYEF+/tQH4aEKsdMBQ7REQtfLGFlEzTMB/\nBNUI5YCF3PV9MKr3N53vEVYvkbXLbw==\n=LO1E\n-----END PGP SIGNATURE-----\n\r\n-----------------------------5072966556248019951999579782--\r\nCAAdFiEEweTLo61406/YlPngt6ZvA7WQdqgFAlqfE5MACgkQt6ZvA7WQ\ndqgnEAgAjtdbsMPaULGXKX6H+fcsYeGEN8OjiUTNz+StwNDkDxhxB4MT0N0lYZ4L\nxUv86kwMdWAaxp8pvVWo6gWXTEM5gWmN302bBxkpbhBl9fnq6WdcCCDGs4GM5vHX\nlOrHXWTsK+8ayLNZ0dCcP054srAtMmJHscPiuUYPfvKSgLxl+JxkPC147");
         assert!(response.is_some());
         let response_unwrapped = response.expect("multipart");
         if let BodyContentType::MultiPart(body) = response_unwrapped.body {
+            eprintln!("body: {:?}", body);
             assert_eq!(
-                String::from_utf8(body.get(&"file".to_string()).unwrap().body.clone()).unwrap(),
-                "policyID,statecode,county,eq_site_limit,hu_site_limit,fl_site_limit,fr_site_limit,tiv_2011,tiv_2012,eq_site_deductible,hu_site_deductible,fl_site_deductible,fr_site_deductible,point_latitude,point_longitude,line,construction,point_granularity\r\n119736,FL,CLAY COUNTY,498960,498960,498960,498960,498960,792148.9,0,9979.2,0,0,30.102261,-81.711777,Residential,Masonry,1\r\n448094,FL,CLAY COUNTY,1322376.3,1322376.3,1322376.3,1322376.3,1322376.3,1438163.57,0,0,0,0,30.063936,-81.707664,Residential,Masonry,3".to_string()
+                String::from_utf8(body.get(&"file".to_string()).expect("expecting file data").body.clone()).expect("expecting utf-8 file data"),
+                "-----BEGIN PGP SIGNATURE-----\n\niQEzBAABCAAdFiEEweTLo61406/YlPngt6ZvA7WQdqgFAlqfE5MACgkQt6ZvA7WQ\ndqgnEAgAjtdbsMPaULGXKX6H+fcsYeGEN8OjiUTNz+StwNDkDxhxB4MT0N0lYZ4L\nxUv86kwMdWAaxp8pvVWo6gWXTEM5gWmN302bBxkpbhBl9fnq6WdcCCDGs4GM5vHX\nlOrHXWTsK+8ayLNZ0dCcP054srAtMmJHscPiuUYPfvKSgLxl+JxkPC147EktCCzv\n5O+2AtQPwIEPuaMewFqP9KjaGOhWgAc0nauIKa0ASt9FXXrexq1EoZnoZ3ZQ0p/w\n/otAB2D27yQ4kv+X2Rn94Ky9W0lMT2MYEF+/tQH4aEKsdMBQ7REQtfLGFlEzTMB/\nBNUI5YCF3PV9MKr3N53vEVYvkbXLbw==\n=LO1E\n-----END PGP SIGNATURE-----\n".to_string()
             );
         } else {
             eprintln!(
@@ -1020,9 +1055,9 @@ BNUI5YCF3PV9MKr3N53vEVYvkbXLbw==
                 response_unwrapped
                     .headers
                     .get("Content-Type")
-                    .unwrap()
+                    .expect("A content-type header")
                     .get_key_value("boundary")
-                    .unwrap()
+                    .expect("A boundary")
             );
             panic!(
                 "Expected multipart content but got: {:?}",
