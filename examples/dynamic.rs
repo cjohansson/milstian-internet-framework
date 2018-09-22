@@ -62,7 +62,7 @@ impl ResponderInterface for Responder {
                 _ => "no data".to_string(),
             };
 
-            let output = format!("<html><head><title>Milstian Web Framework - Dynamic Test</title><link rel='stylesheet' href='/css/style.css' /></head><body><div class='wrapper'><h1>Milstian Web Framework</h1><img alt='' src='/img/logo1-modified.jpg' /><p><strong>Query argument:</strong> {}</p><div><strong>File upload:</strong><br /><pre>{}</pre></div><h2>Dynamic Test</h2><form action='' method='post' enctype='multipart/form-data'><fieldset><legend>File upload</legend><div><label>Select file<br /><input type='file' name='file' /></label></div><div><input type='submit' value='Upload' /></div></fieldset></form></div></body></html>", route, &upload);
+            let output = format!("<html><head><title>Milstian Internet Framework - Dynamic Example</title><link rel='stylesheet' href='/css/style.css' /></head><body><div class='wrapper'><h1>Milstian Web Framework</h1><img alt='' src='/img/logo1-modified.jpg' /><p><strong>Query argument:</strong> {}</p><div><strong>File upload:</strong><br /><pre>{}</pre></div><h2>Dynamic Test</h2><form action='' method='post' enctype='multipart/form-data'><fieldset><legend>File upload</legend><div><label>Select file<br /><input type='file' name='file' /></label></div><div><input type='submit' value='Upload' /></div></fieldset></form></div></body></html>", route, &upload);
 
             return Ok(response::Message::new(
                 protocol.to_string(),

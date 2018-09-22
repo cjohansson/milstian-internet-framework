@@ -1,4 +1,4 @@
-# Milstian - Rust Internet Framework
+# Milstian - a Rust Internet Framework
 
 ![Milstian Logo](https://raw.githubusercontent.com/cjohansson/milstian-rust-internet-framework/master/html/img/logo1-modified.jpg)
 

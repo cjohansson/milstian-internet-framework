@@ -1,5 +1,5 @@
 [package]
-name = "milstian"
+name = "milstian-internet-framework"
 version = "0.1.0"
 authors = ["Christian Johansson <christian@cvj.se>"]
 description = "A internet framework"
