@@ -1,4 +1,4 @@
-extern crate milstian;
+extern crate milstian_internet_framework;
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -8,8 +8,8 @@ use milstian_http::request;
 use milstian_http::request::BodyContentType;
 use milstian_http::response;
 
-use milstian::response::tcp::http::ResponderInterface;
-use milstian::{Application, Config};
+use milstian_internet_framework::response::tcp::http::ResponderInterface;
+use milstian_internet_framework::{Application, Config};
 
 #[derive(Clone)]
 pub struct Responder {

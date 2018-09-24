@@ -1,4 +1,4 @@
-extern crate milstian;
+extern crate milstian_internet_framework;
 
 #[test]
 fn tcp_http() {

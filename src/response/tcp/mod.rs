@@ -1,3 +1,5 @@
+//! # Namespace for TCP/IP responses
+
 pub mod http;
 
 use std::io::prelude::*;

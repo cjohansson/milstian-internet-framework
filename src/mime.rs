@@ -1,3 +1,6 @@
+//! # Handling MIME types
+
+/// # Determine MIME based on filename.
 // @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Complete_list_of_MIME_types
 pub fn from_filename(filename: &str) -> String {
     let mut mime = "application/octet-stream";

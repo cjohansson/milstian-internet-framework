@@ -40,10 +40,8 @@ This project is based on the programming exercise *Building a multithreaded web 
 ## Example static TCP-HTTP application
 
 ``` rust
-extern crate milstian;
-
-use milstian::{Application, Config};
-
+extern crate milstian_internet_framework;
+use milstian_internet_framework::{Application, Config};
 fn main() {
     Application::tcp_http_with_legacy_responders(Config::from_env());
 }
@@ -52,17 +50,16 @@ fn main() {
 ## Example simple dynamic TCP-HTTP application
 
 ``` rust
-extern crate milstian;
+extern crate milstian_internet_framework;
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
 extern crate milstian_http;
-use milstian_http::request;
-use milstian_http::response;
-
-use milstian::response::tcp::http::ResponderInterface;
-use milstian::{Application, Config};
+use milstian_internet_framework::request;
+use milstian_internet_framework::response;
+use milstian_internet_framework::response::tcp::http::ResponderInterface;
+use milstian_internet_framework::{Application, Config};
 
 #[derive(Clone)]
 pub struct Responder {

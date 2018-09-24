@@ -13,6 +13,13 @@ use std::path::PathBuf;
 use response::tcp::http::{error, file_not_found, filesystem, ResponderInterface};
 
 #[derive(Clone, Debug)]
+/// # Holds application configuration, can be created in different ways.
+/// ## From environment:
+/// ```rust
+///use milstian_internet_framework::Config;
+///let config = Config::from_env();
+///assert!(config.is_err()); // Expected fail since environment variables is missing
+/// ```
 pub struct Config {
     pub file_not_found_file: String,
     pub filesystem_directory_index: String,
@@ -127,6 +134,13 @@ mod config_test {
     }
 }
 
+/// # Main entry point for a new application.
+/// Could in the future support multiple transport layers and application layers.
+/// ## TCP/IP HTTP static application:
+/// ```rust,should_panic
+/// use milstian_internet_framework::{Application, Config};
+/// Application::tcp_http_with_legacy_responders(Config::from_env());
+/// ```
 pub struct Application;
 
 impl Application {

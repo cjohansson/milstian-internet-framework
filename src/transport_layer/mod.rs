@@ -1,3 +1,6 @@
+//! # Supported transport layers
+//! Binds to transport layer and spawns new threads for dispatching responses.
+
 use std::net::TcpListener;
 
 use response::tcp::http::ResponderInterface;
