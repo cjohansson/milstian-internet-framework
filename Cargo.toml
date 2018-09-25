@@ -1,6 +1,6 @@
 [package]
 name = "milstian-internet-framework"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Christian Johansson <christian@cvj.se>"]
 description = "A internet framework"
 license = "GPL-3.0-only"
