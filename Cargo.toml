@@ -4,6 +4,7 @@ version = "0.1.1"
 authors = ["Christian Johansson <christian@cvj.se>"]
 description = "A internet framework"
 license = "GPL-3.0-only"
+repository = "https://github.com/cjohansson/milstian-internet-framework"
 
 [dependencies]
 chrono = "0.4"
