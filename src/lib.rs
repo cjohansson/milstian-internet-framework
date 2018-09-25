@@ -1,3 +1,12 @@
+//! # Milstian Internet Framework
+//! In progress, primarily used for learning Rust programming.
+//!
+//! This project is based on the programming exercise *Building a multithreaded web server* from the book *The Rust Programming Language* (*no starch press 2018*) and inspired by the *Aomebo Web Framework for PHP*.
+//!
+//! ## Major goal
+//! * Easy to make any kind of website with it that is scaleable, fast and robust
+
+
 pub mod mime;
 pub mod response;
 mod thread;
@@ -144,6 +153,20 @@ mod config_test {
 pub struct Application;
 
 impl Application {
+    /// Create a new TCP/IP HTTP application
+    /// # Example
+    /// ```rust,should_panic
+    /// extern crate milstian_internet_framework;
+    /// use milstian_internet_framework::{Application, Config};
+    /// use milstian_internet_framework::response::tcp::http::{error, file_not_found, filesystem, ResponderInterface};
+    /// fn main() {
+    ///     let responders: Vec<Box<ResponderInterface + Send>> = vec![
+    ///         Box::new(filesystem::Responder::new()),
+    ///         Box::new(error::Responder::new()),
+    ///     ];
+    ///     Application::tcp_http(Config::from_env(), responders);
+    /// }
+    /// ```
     pub fn tcp_http(
         config: Result<Config, String>,
         responders: Vec<Box<ResponderInterface + Send>>,
@@ -151,6 +174,15 @@ impl Application {
         transport_layer::TCP::http(config, responders)
     }
 
+    /// Create a new TCP/IP HTTP application with the legacy responders
+    /// # Example
+    /// ```rust,should_panic
+    /// extern crate milstian_internet_framework;
+    /// use milstian_internet_framework::{Application, Config};
+    /// fn main() {
+    ///     Application::tcp_http_with_legacy_responders(Config::from_env());
+    /// }
+    /// ```
     pub fn tcp_http_with_legacy_responders(config: Result<Config, String>) {
         let responders: Vec<Box<ResponderInterface + Send>> = vec![
             Box::new(filesystem::Responder::new()),
@@ -160,6 +192,8 @@ impl Application {
         transport_layer::TCP::http(config, responders)
     }
 
+    /// Create a new TCP/IP with legacy and a custom responder
+    // TODO Add example here
     pub fn tcp_http_with_legacy_and_custom_responders(
         config: Result<Config, String>,
         custom: Box<ResponderInterface + Send>,
