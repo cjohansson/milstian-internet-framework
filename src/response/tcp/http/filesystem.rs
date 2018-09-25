@@ -1,3 +1,5 @@
+//! # TCP/IP HTTP Filesystem Response
+//! Used for displaying static resources from the server.
 extern crate chrono;
 
 use std::collections::hash_map::DefaultHasher;

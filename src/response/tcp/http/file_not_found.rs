@@ -1,3 +1,6 @@
+//! # TCP/IP HTTP File not found Response
+//! Used for displaying that a resource was not found on the server.
+
 use std::net::SocketAddr;
 use std::path::Path;
 

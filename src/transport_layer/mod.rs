@@ -1,5 +1,5 @@
 //! # Supported transport layers
-//! Binds to transport layer and spawns new threads for dispatching responses.
+//! Binds to the transport layer socket and spawns new threads for dispatching responses.
 
 use std::net::TcpListener;
 
@@ -12,6 +12,7 @@ pub struct TCP {}
 
 impl TCP {
     /// This method creates a new HTTP over TCP application based on configuration
+    // TODO Add example here
     pub fn http(config: Result<Config, String>, responders: Vec<Box<ResponderInterface + Send>>) {
         let config = config.expect("Missing configuration!");
         let path = format!("{}:{}", &config.server_host, &config.server_port);

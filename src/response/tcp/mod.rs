@@ -10,11 +10,11 @@ use response::tcp::http::ResponderInterface;
 
 use Config;
 
-// This struct should handle the dispatching of requests to a specific response type
+/// This struct should handle the dispatching of requests to a specific response type
 pub struct Dispatcher {}
 
 impl Dispatcher {
-    /// This method takes a TcpStream and finds appropriate response handler
+    /// This method takes a TcpStream and tries to find a appropriate response handler
     pub fn http(
         mut stream: TcpStream,
         socket: SocketAddr,

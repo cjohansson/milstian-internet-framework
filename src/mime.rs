@@ -1,6 +1,12 @@
 //! # Handling MIME types
 
-/// # Determine MIME based on filename.
+/// Determine MIME based on filename.
+// # Example
+/// ```rust
+/// use milstian_internet_framework::mime;
+/// let mime_type = mime::from_filename("random.aac");
+/// assert_eq!("audio/aac", mime_type);
+/// ```
 // @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Complete_list_of_MIME_types
 pub fn from_filename(filename: &str) -> String {
     let mut mime = "application/octet-stream";

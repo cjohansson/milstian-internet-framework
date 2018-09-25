@@ -1,3 +1,6 @@
+//! # TCP/IP HTTP Legacy responders
+//! A collection of built-in TCP/IP HTTP responders.
+
 pub mod error;
 pub mod file_not_found;
 pub mod filesystem;

@@ -1,3 +1,6 @@
+//! # TCP/IP HTTP Error response
+//! Used for responding a general error.
+
 extern crate milstian_http;
 use milstian_http::request;
 use milstian_http::response;

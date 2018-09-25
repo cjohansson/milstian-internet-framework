@@ -1,11 +1,25 @@
 //! # Milstian Internet Framework
+//!
+//! ![Milstian Logo](https://raw.githubusercontent.com/cjohansson/milstian-rust-internet-framework/master/html/img/logo1-modified.jpg)
+//!
 //! In progress, primarily used for learning Rust programming.
 //!
 //! This project is based on the programming exercise *Building a multithreaded web server* from the book *The Rust Programming Language* (*no starch press 2018*) and inspired by the *Aomebo Web Framework for PHP*.
 //!
 //! ## Major goal
 //! * Easy to make any kind of website with it that is scaleable, fast and robust
-
+//!
+//! ## Usage
+//! This crate is on [crates.io](https://crates.io/crates/milstian-internet-framework) and can be used by adding time to the dependencies in your project's `Cargo.toml`.
+//!
+//! ```toml
+//! [dependencies]
+//! milstian_internet_framework = "0.1"
+//! ```
+//! And this in your crate root:
+//! ```rust,dont_run
+//! extern crate milstian_internet_framework;
+//! ```
 
 pub mod mime;
 pub mod response;
@@ -167,6 +181,7 @@ impl Application {
     ///     Application::tcp_http(Config::from_env(), responders);
     /// }
     /// ```
+    // TODO Use example that doesn't panic
     pub fn tcp_http(
         config: Result<Config, String>,
         responders: Vec<Box<ResponderInterface + Send>>,
@@ -183,6 +198,7 @@ impl Application {
     ///     Application::tcp_http_with_legacy_responders(Config::from_env());
     /// }
     /// ```
+    // TODO Use example that doesn't panic
     pub fn tcp_http_with_legacy_responders(config: Result<Config, String>) {
         let responders: Vec<Box<ResponderInterface + Send>> = vec![
             Box::new(filesystem::Responder::new()),
