@@ -21,6 +21,8 @@
 //! extern crate milstian_internet_framework;
 //! ```
 
+extern crate milstian_http;
+
 pub mod application_layer;
 pub mod mime;
 pub mod response;

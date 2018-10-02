@@ -17,9 +17,8 @@ use chrono::offset::Utc;
 use chrono::{DateTime, TimeZone};
 use std::net::SocketAddr;
 
-extern crate milstian_http;
-use milstian_http::request;
-use milstian_http::response;
+use application_layer::http::request;
+use application_layer::http::response;
 
 use mime;
 use response::tcp::http::ResponderInterface;

@@ -1,11 +1,11 @@
+extern crate milstian_http;
+
 pub mod response
 {
-    extern crate milstian_http;
-    use milstian_http::response::*;
+    pub use milstian_http::response::*;
 }
 
 pub mod request
 {
-    extern crate milstian_http;
-    use milstian_http::request::*;
+    pub use milstian_http::request::*;
 }

@@ -7,9 +7,7 @@ pub mod filesystem;
 
 use std::net::SocketAddr;
 
-extern crate milstian_http;
-use milstian_http::request;
-
+use application_layer::http::request;
 use Config;
 
 pub struct Dispatcher {

@@ -4,9 +4,7 @@
 use std::net::SocketAddr;
 use std::path::Path;
 
-extern crate milstian_http;
-use milstian_http::request;
-
+use application_layer::http::request;
 use response::tcp::http::filesystem;
 use response::tcp::http::ResponderInterface;
 use Config;
@@ -75,9 +73,7 @@ mod file_not_found_test {
     use std::net::{IpAddr, Ipv4Addr};
     use std::time::Duration;
 
-    extern crate milstian_http;
-    use milstian_http::response;
-
+    use application_layer::http::response;
     use mime;
 
     #[test]

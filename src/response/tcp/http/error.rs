@@ -54,11 +54,10 @@ impl ResponderInterface for Responder {
 mod error_test {
     use super::*;
 
-    extern crate milstian_http;
-    use milstian_http::response;
-
     use std::collections::HashMap;
     use std::net::{IpAddr, Ipv4Addr};
+
+    use application_layer::http::response;
 
     #[test]
     fn test_matches() {

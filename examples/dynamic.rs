@@ -3,11 +3,9 @@ extern crate milstian_internet_framework;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
-extern crate milstian_http;
-use milstian_http::request;
-use milstian_http::request::BodyContentType;
-use milstian_http::response;
-
+use milstian_internet_framework::application_layer::http::request;
+use milstian_internet_framework::application_layer::http::request::BodyContentType;
+use milstian_internet_framework::application_layer::http::response;
 use milstian_internet_framework::response::tcp::http::ResponderInterface;
 use milstian_internet_framework::{Application, Config};
 
