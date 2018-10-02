@@ -21,13 +21,13 @@
 //! extern crate milstian_internet_framework;
 //! ```
 
+pub mod application_layer;
 pub mod mime;
 pub mod response;
 mod thread;
 pub mod transport_layer;
 
 extern crate chrono;
-extern crate milstian_http;
 
 use std::env;
 use std::fs;
@@ -54,6 +54,7 @@ pub struct Config {
 }
 
 impl Config {
+    /// Find canonical root from a string path
     pub fn get_canonical_root(root_path: &String) -> Result<String, String> {
         let root_path = PathBuf::from(&root_path);
         match fs::canonicalize(&root_path) {
@@ -76,8 +77,7 @@ impl Config {
         }
     }
 
-    /// This method takes a vector of strings and creates a config struct
-    /// based on index 1 (server), 2 (port) and 3 (limit)
+    /// This method takes a vector of strings and creates a config struct based on argument vector
     pub fn from_env_args(args: Vec<String>) -> Result<Config, String> {
         if args.len() < 8 {
             return Err("Not enough shell arguments!".to_string());
@@ -113,47 +113,6 @@ impl Config {
     /// and passes them on to method from_env_args
     pub fn from_env() -> Result<Config, String> {
         Config::from_env_args(env::args().collect())
-    }
-}
-
-#[cfg(test)]
-mod config_test {
-    use super::*;
-
-    #[test]
-    fn from_env_args() {
-        // This is expected to work
-        let response = Config::from_env_args(vec![
-            String::from("ignore this"),
-            String::from("127.0.0.1"),
-            String::from("7878"),
-            String::from("4"),
-            String::from("index.htm"),
-            String::from("./html/"),
-            String::from("404.htm"),
-            String::from("1024"),
-        ]);
-        assert!(response.is_ok());
-
-        // Expected four arguments but received three
-        let response = Config::from_env_args(vec![
-            String::from("127.0.0.1"),
-            String::from("7878"),
-            String::from("4"),
-        ]);
-        assert!(response.is_err());
-
-        // Expected integer but got string
-        let response = Config::from_env_args(vec![
-            String::from("ignore this"),
-            String::from("127.0.0.1"),
-            String::from("7878"),
-            String::from("4"),
-            String::from("index.htm"),
-            String::from("./htmls/"),
-            String::from("404.htm"),
-        ]);
-        assert!(response.is_err());
     }
 }
 
@@ -208,7 +167,7 @@ impl Application {
         transport_layer::TCP::http(config, responders)
     }
 
-    /// Create a new TCP/IP with legacy and a custom responder
+    /// # Create a new TCP/IP with legacy and a custom responder
     // TODO Add example here
     pub fn tcp_http_with_legacy_and_custom_responders(
         config: Result<Config, String>,
@@ -221,5 +180,46 @@ impl Application {
             Box::new(error::Responder::new()),
         ];
         transport_layer::TCP::http(config, responders)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_env_args() {
+        // This is expected to work
+        let response = Config::from_env_args(vec![
+            String::from("ignore this"),
+            String::from("127.0.0.1"),
+            String::from("7878"),
+            String::from("4"),
+            String::from("index.htm"),
+            String::from("./html/"),
+            String::from("404.htm"),
+            String::from("1024"),
+        ]);
+        assert!(response.is_ok());
+
+        // Expected four arguments but received three
+        let response = Config::from_env_args(vec![
+            String::from("127.0.0.1"),
+            String::from("7878"),
+            String::from("4"),
+        ]);
+        assert!(response.is_err());
+
+        // Expected integer but got string
+        let response = Config::from_env_args(vec![
+            String::from("ignore this"),
+            String::from("127.0.0.1"),
+            String::from("7878"),
+            String::from("4"),
+            String::from("index.htm"),
+            String::from("./htmls/"),
+            String::from("404.htm"),
+        ]);
+        assert!(response.is_err());
     }
 }

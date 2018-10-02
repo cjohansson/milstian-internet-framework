@@ -1,9 +1,8 @@
 //! # TCP/IP HTTP Error response
 //! Used for responding a general error.
 
-extern crate milstian_http;
-use milstian_http::request;
-use milstian_http::response;
+use application_layer::http::request;
+use application_layer::http::response;
 
 use std::collections::HashMap;
 use std::net::SocketAddr;

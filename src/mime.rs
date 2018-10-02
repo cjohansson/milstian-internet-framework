@@ -90,3 +90,22 @@ pub fn from_filename(filename: &str) -> String {
     }
     mime.to_string()
 }
+
+#[cfg(test)]
+mod tests
+{
+    use super::*;
+
+    #[test]
+    fn test_from_filename()
+    {
+        assert_eq!(
+            from_filename("random.webp"),
+            "image/webp"
+        );
+        assert_eq!(
+            from_filename("random.random"),
+            "application/octet-stream"
+        );
+    }
+}
