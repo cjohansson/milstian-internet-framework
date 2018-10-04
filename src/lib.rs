@@ -111,8 +111,12 @@ impl Config {
         })
     }
 
-    /// This method collects arguments from environment
-    /// and passes them on to method from_env_args
+    /// This method collects arguments from environment and passes them on to method from_env_args
+    /// # Example
+    /// ```rust
+    /// use milstian_internet_framework::Config;
+    /// let config = Config::from_env();
+    /// ```
     pub fn from_env() -> Result<Config, String> {
         Config::from_env_args(env::args().collect())
     }
@@ -170,7 +174,13 @@ impl Application {
     }
 
     /// # Create a new TCP/IP with legacy and a custom responder
-    // TODO Add example here
+    /// ```rust,should_panic
+    /// use milstian_internet_framework::{Application, Config};
+    /// fn main() {
+    ///     Application::tcp_http_with_legacy_responders(Config::from_env());
+    /// }
+    /// ```
+    // TODO Use example that doesn't panic
     pub fn tcp_http_with_legacy_and_custom_responders(
         config: Result<Config, String>,
         custom: Box<ResponderInterface + Send>,
