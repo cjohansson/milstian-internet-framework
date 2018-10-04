@@ -21,7 +21,9 @@ impl Pool {
 
         // Send a NewJob Message down the channel
         // If it fails program will crash deliberately
-        self.sender.send(Message::NewJob(job)).unwrap();
+        self.sender
+            .send(Message::NewJob(job))
+            .expect("Failed to send job down to channel");
     }
 
     /// Create a new mutex channel with specified number of receivers
@@ -87,12 +89,10 @@ impl Worker {
                     match message {
                         Message::NewJob(job) => {
                             println!("Worker {} got a job; executing.", id);
-
                             job.call_box();
                         }
                         Message::Terminate => {
                             println!("Worker {} was told to terminate.", id);
-
                             break;
                         }
                     }
