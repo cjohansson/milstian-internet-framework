@@ -1,3 +1,5 @@
+//! # Handles the workers
+
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;

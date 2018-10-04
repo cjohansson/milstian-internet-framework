@@ -1,6 +1,8 @@
 //! # Supported transport layers
 //! Binds to the transport layer socket and spawns new threads for dispatching responses.
 
+extern crate chrono;
+use chrono::offset::Utc;
 use std::net::TcpListener;
 
 use response::tcp::http::ResponderInterface;
@@ -24,6 +26,10 @@ impl TCP {
                 loop {
                     match listener.accept() {
                         Ok((stream, socket)) => {
+                            println!(
+                                "{} - new TCP packet",
+                                Utc::now().format("%Y-%m-%d %H:%M:%S")
+                            );
                             let config = config.clone();
                             let responders = responders.clone();
                             pool.execute(move || {
