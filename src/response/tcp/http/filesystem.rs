@@ -286,7 +286,7 @@ impl ResponderInterface for Responder {
 }
 
 #[cfg(test)]
-mod filesystem_test {
+mod tests {
     use super::*;
     use std::net::{IpAddr, Ipv4Addr};
     use std::str;

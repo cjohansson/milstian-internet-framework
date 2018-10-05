@@ -51,7 +51,7 @@ impl ResponderInterface for Responder {
 }
 
 #[cfg(test)]
-mod error_test {
+mod tests {
     use super::*;
 
     use std::collections::HashMap;

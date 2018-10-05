@@ -21,6 +21,7 @@
 //! extern crate milstian_internet_framework;
 //! ```
 
+extern crate milstian_feedback;
 extern crate milstian_http;
 
 pub mod application_layer;
@@ -35,6 +36,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
+use milstian_feedback::Feedback;
 use response::tcp::http::{error, file_not_found, filesystem, ResponderInterface};
 
 #[derive(Clone, Debug)]
@@ -46,6 +48,8 @@ use response::tcp::http::{error, file_not_found, filesystem, ResponderInterface}
 ///assert!(config.is_err()); // Expected fail since environment variables is missing
 /// ```
 pub struct Config {
+    pub feedback_error_file: Option<String>,
+    pub feedback_info_file: Option<String>,
     pub file_not_found_file: String,
     pub filesystem_directory_index: String,
     pub filesystem_root: String,
@@ -101,6 +105,8 @@ impl Config {
             Err(_) => return Err("Failed to parse TCP limit!".to_string()),
         };
         Ok(Config {
+            feedback_error_file: Option::None,
+            feedback_info_file: Option::None,
             filesystem_directory_index,
             file_not_found_file,
             filesystem_root,
@@ -129,9 +135,19 @@ impl Config {
 /// use milstian_internet_framework::{Application, Config};
 /// Application::tcp_http_with_legacy_responders(Config::from_env());
 /// ```
-pub struct Application;
+pub struct Application {
+    _config: Config,
+    _feedback: Feedback,
+}
 
 impl Application {
+    pub fn new(_config: Config) -> Application {
+        Application {
+            _config,
+            _feedback: Feedback::new(_config.feedback_error_file, _config.feedback_info_file),
+        }
+    }
+
     /// Create a new TCP/IP HTTP application
     /// # Example
     /// ```rust,should_panic

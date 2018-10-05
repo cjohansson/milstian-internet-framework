@@ -14,11 +14,20 @@ pub struct TCP {}
 
 impl TCP {
     /// This method creates a new HTTP over TCP application based on configuration
+    /// ```rust
+    /// let responders: Vec<Box<ResponderInterface + Send>> = vec![
+    ///     Box::new(filesystem::Responder::new()),
+    ///     Box::new(file_not_found::Responder::new()),
+    ///     Box::new(error::Responder::new()),
+    /// ];
+    /// transport_layer::TCP::http(config, responders)
+    /// ```
     // TODO Add example here
     pub fn http(config: Result<Config, String>, responders: Vec<Box<ResponderInterface + Send>>) {
         let config = config.expect("Missing configuration!");
         let path = format!("{}:{}", &config.server_host, &config.server_port);
         let listener = TcpListener::bind(&path);
+        println!("Starting listening on TCP/IP connections to: {}", &path);
 
         match listener {
             Ok(listener) => {
@@ -43,7 +52,7 @@ impl TCP {
                 }
             }
             Err(e) => {
-                panic!(format!("Failed to bind to server and port, error: {}", e));
+                panic!(format!("Failed to bind to server and port: {}, error: {}", &path, e));
             }
         }
     }

@@ -63,7 +63,7 @@ impl ResponderInterface for Responder {
 }
 
 #[cfg(test)]
-mod file_not_found_test {
+mod tests {
     use super::*;
 
     use std::collections::HashMap;
