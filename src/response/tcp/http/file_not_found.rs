@@ -36,7 +36,7 @@ impl ResponderInterface for Responder {
         if exists {
             is_dir = Path::new(&filename).is_dir();
             if is_dir {
-                eprintln!("File not found file is directory {}", &filename);
+                eprintln!("File not found because file is directory {}", &filename);
             }
         } else {
             eprintln!("File not found file does not exists {}", &filename);
@@ -79,6 +79,8 @@ mod tests {
     #[test]
     fn matches() {
         let config = Config {
+            feedback_error_file: Option::None,
+            feedback_info_file: Option::None,
             filesystem_directory_index: "index.htm".to_string(),
             file_not_found_file: "404.htm".to_string(),
             filesystem_root: Config::get_canonical_root(&"./html/".to_string()).unwrap(),
@@ -106,6 +108,8 @@ mod tests {
         ));
 
         let config = Config {
+            feedback_error_file: Option::None,
+            feedback_info_file: Option::None,
             filesystem_directory_index: "index.htm".to_string(),
             file_not_found_file: "404_file.htm".to_string(),
             filesystem_root: Config::get_canonical_root(&"./html/".to_string()).unwrap(),
@@ -125,6 +129,8 @@ mod tests {
     #[test]
     fn respond() {
         let config = Config {
+            feedback_error_file: Option::None,
+            feedback_info_file: Option::None,
             filesystem_directory_index: "index.htm".to_string(),
             file_not_found_file: "404.htm".to_string(),
             filesystem_root: Config::get_canonical_root(&"./html/".to_string()).unwrap(),

@@ -294,6 +294,8 @@ mod tests {
     #[test]
     fn matches() {
         let config = Config {
+            feedback_error_file: Option::None,
+            feedback_info_file: Option::None,
             filesystem_directory_index: "index.htm".to_string(),
             file_not_found_file: "404.htm".to_string(),
             filesystem_root: Config::get_canonical_root(&"./html/".to_string()).unwrap(),
@@ -347,6 +349,8 @@ mod tests {
     #[test]
     fn respond() {
         let config = Config {
+            feedback_error_file: Option::None,
+            feedback_info_file: Option::None,
             filesystem_directory_index: "index.htm".to_string(),
             file_not_found_file: "404.htm".to_string(),
             filesystem_root: Config::get_canonical_root(&"./html/".to_string()).unwrap(),

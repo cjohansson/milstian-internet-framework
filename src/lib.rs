@@ -143,9 +143,10 @@ pub struct Application {
 
 impl Application {
     pub fn new(config: Config) -> Application {
+        let feedback = Feedback::new(config.feedback_error_file.clone(), config.feedback_info_file.clone());
         Application {
             config,
-            feedback: Feedback::new(config.feedback_error_file, config.feedback_info_file),
+            feedback,
         }
     }
 

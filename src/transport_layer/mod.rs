@@ -21,7 +21,7 @@ impl TCP {
     /// transport_layer::TCP::http(config, responders)
     /// ```
     // TODO Add example here
-    pub fn http(application: Application, responders: Vec<Box<ResponderInterface + Send>>) {
+    pub fn http(application: &Application, responders: Vec<Box<ResponderInterface + Send>>) {
         let config = application.get_config();
         let path = format!("{}:{}", &config.server_host, &config.server_port);
         let listener = TcpListener::bind(&path);
@@ -40,10 +40,10 @@ impl TCP {
                                 "Received new TCP/IP stream from {}",
                                 socket
                             ));
-                            let config = config.clone();
+                            let application = application.clone();
                             let responders = responders.clone();
                             pool.execute(move || {
-                                Dispatcher::http(stream, socket, config, responders);
+                                Dispatcher::http(stream, socket, application, responders);
                             });
                         }
                         Err(e) => {
