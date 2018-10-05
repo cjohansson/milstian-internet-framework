@@ -8,7 +8,7 @@ use std::str;
 
 use response::tcp::http::ResponderInterface;
 
-use Config;
+use Application;
 
 /// This struct should handle the dispatching of requests to a specific response type
 pub struct Dispatcher {}
@@ -18,14 +18,13 @@ impl Dispatcher {
     pub fn http(
         mut stream: TcpStream,
         socket: SocketAddr,
-        config: Config,
+        application: Application,
         responders: Vec<Box<ResponderInterface + Send>>,
     ) {
         // Create a array with 512 elements containing the value 0
         let mut temp_buffer = [0; 512];
         let mut buffer: Vec<u8> = Vec::new();
-
-        println!("Received stream from {:?}", socket);
+        let config = application.get_config();
 
         if let Ok(read_size) = stream.read(&mut temp_buffer) {
             // Move all non-empty values to new buffer
@@ -55,16 +54,17 @@ impl Dispatcher {
                                 break;
                             }
                             if buffer.len() > config.tcp_limit {
-                                println!(
-                                    "Accumulated buffer {} exceeds size {}, breaking parse",
-                                    buffer.len(),
+                                application.get_feedback().info(format!(
+                                    "TCP stream exceeds size {}, aborting parse",
                                     config.tcp_limit
-                                );
+                                ));
                                 break;
                             }
                         }
                         Err(error) => {
-                            println!("Failed to read from TCP stream, error: {}", error);
+                            application
+                                .get_feedback()
+                                .error(format!("Failed to read from TCP stream, error: {}", error));
                             break;
                         }
                     }
@@ -80,36 +80,48 @@ impl Dispatcher {
                     match http_dispatcher.respond(&buffer, &config, &socket, responders) {
                         Ok(http_response) => {
                             response = http_response;
+                            application
+                                .get_feedback()
+                                .info(format!("Found non-empty HTTP response to TCP stream"));
                         }
                         Err(error) => {
-                            println!("Got empty HTTP response! Error: {}", error);
+                            application
+                                .get_feedback()
+                                .error(format!("Got empty HTTP response! Error: {}", error));
                         }
                     }
                 }
 
                 if !response.is_empty() {
-                    println!("Found non-empty HTTP response for TCP stream");
                     match stream.write(&response) {
                         Ok(_) => {
                             if let Err(error) = stream.flush() {
-                                println!("Failed to flush TCP stream, error: {}", error);
+                                application
+                                    .get_feedback()
+                                    .info(format!("Failed to flush TCP stream, error: {}", error));
                             }
                         }
                         Err(error) => {
-                            println!("Failed to write TCP stream, error: {}", error);
+                            application
+                                .get_feedback()
+                                .error(format!("Failed to write to TCP stream, error: {}", error));
                         }
                     }
                 } else {
-                    println!(
-                        "Found no response for TCP request {:?}",
+                    application.get_feedback().error(format!(
+                        "Found no response for TCP stream {:?}",
                         str::from_utf8(&buffer)
-                    );
+                    ));
                 }
             } else {
-                println!("Found empty TCP stream!");
+                application
+                    .get_feedback()
+                    .info("TCP stream was empty".to_string());
             }
         } else {
-            println!("Failed to read initial bytes from TCP stream");
+            application
+                .get_feedback()
+                .info("Failed to read from TCP stream".to_string());
         }
     }
 }

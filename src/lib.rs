@@ -135,17 +135,26 @@ impl Config {
 /// use milstian_internet_framework::{Application, Config};
 /// Application::tcp_http_with_legacy_responders(Config::from_env());
 /// ```
+#[derive(Clone, Debug)]
 pub struct Application {
-    _config: Config,
-    _feedback: Feedback,
+    config: Config,
+    feedback: Feedback,
 }
 
 impl Application {
-    pub fn new(_config: Config) -> Application {
+    pub fn new(config: Config) -> Application {
         Application {
-            _config,
-            _feedback: Feedback::new(_config.feedback_error_file, _config.feedback_info_file),
+            config,
+            feedback: Feedback::new(config.feedback_error_file, config.feedback_info_file),
         }
+    }
+
+    pub fn get_config(&self) -> &Config {
+        &self.config
+    }
+
+    pub fn get_feedback(&self) -> &Feedback {
+        &self.feedback
     }
 
     /// Create a new TCP/IP HTTP application
@@ -163,11 +172,8 @@ impl Application {
     /// }
     /// ```
     // TODO Use example that doesn't panic
-    pub fn tcp_http(
-        config: Result<Config, String>,
-        responders: Vec<Box<ResponderInterface + Send>>,
-    ) {
-        transport_layer::TCP::http(config, responders)
+    pub fn tcp_http(&self, responders: Vec<Box<ResponderInterface + Send>>) {
+        transport_layer::TCP::http(&self, responders)
     }
 
     /// Create a new TCP/IP HTTP application with the legacy responders
@@ -180,13 +186,13 @@ impl Application {
     /// }
     /// ```
     // TODO Use example that doesn't panic
-    pub fn tcp_http_with_legacy_responders(config: Result<Config, String>) {
+    pub fn tcp_http_with_legacy_responders(&self) {
         let responders: Vec<Box<ResponderInterface + Send>> = vec![
             Box::new(filesystem::Responder::new()),
             Box::new(file_not_found::Responder::new()),
             Box::new(error::Responder::new()),
         ];
-        transport_layer::TCP::http(config, responders)
+        transport_layer::TCP::http(&self, responders)
     }
 
     /// # Create a new TCP/IP with legacy and a custom responder
@@ -198,7 +204,7 @@ impl Application {
     /// ```
     // TODO Use example that doesn't panic
     pub fn tcp_http_with_legacy_and_custom_responders(
-        config: Result<Config, String>,
+        &self,
         custom: Box<ResponderInterface + Send>,
     ) {
         let responders: Vec<Box<ResponderInterface + Send>> = vec![
@@ -207,7 +213,7 @@ impl Application {
             Box::new(file_not_found::Responder::new()),
             Box::new(error::Responder::new()),
         ];
-        transport_layer::TCP::http(config, responders)
+        transport_layer::TCP::http(&self, responders)
     }
 }
 

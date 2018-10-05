@@ -1,14 +1,12 @@
 //! # Supported transport layers
 //! Binds to the transport layer socket and spawns new threads for dispatching responses.
 
-extern crate chrono;
-use chrono::offset::Utc;
 use std::net::TcpListener;
 
 use response::tcp::http::ResponderInterface;
 use response::tcp::Dispatcher;
 use thread::Pool;
-use Config;
+use Application;
 
 pub struct TCP {}
 
@@ -23,11 +21,14 @@ impl TCP {
     /// transport_layer::TCP::http(config, responders)
     /// ```
     // TODO Add example here
-    pub fn http(config: Result<Config, String>, responders: Vec<Box<ResponderInterface + Send>>) {
-        let config = config.expect("Missing configuration!");
+    pub fn http(application: Application, responders: Vec<Box<ResponderInterface + Send>>) {
+        let config = application.get_config();
         let path = format!("{}:{}", &config.server_host, &config.server_port);
         let listener = TcpListener::bind(&path);
-        println!("Starting listening on TCP/IP connections to: {}", &path);
+        application.get_feedback().info(format!(
+            "Starting listening on TCP/IP connections to: {}",
+            &path
+        ));
 
         match listener {
             Ok(listener) => {
@@ -35,10 +36,10 @@ impl TCP {
                 loop {
                     match listener.accept() {
                         Ok((stream, socket)) => {
-                            println!(
-                                "{} - new TCP packet",
-                                Utc::now().format("%Y-%m-%d %H:%M:%S")
-                            );
+                            application.get_feedback().info(format!(
+                                "Received new TCP/IP stream from {}",
+                                socket
+                            ));
                             let config = config.clone();
                             let responders = responders.clone();
                             pool.execute(move || {
@@ -46,13 +47,18 @@ impl TCP {
                             });
                         }
                         Err(e) => {
-                            eprintln!("Failed to accept a incoming stream, error: {}", e);
+                            application
+                                .get_feedback()
+                                .error(format!("Failed to accept a incoming stream, error: {}", e));
                         }
                     }
                 }
             }
             Err(e) => {
-                panic!(format!("Failed to bind to server and port: {}, error: {}", &path, e));
+                panic!(format!(
+                    "Failed to bind to server and port: {}, error: {}",
+                    &path, e
+                ));
             }
         }
     }
