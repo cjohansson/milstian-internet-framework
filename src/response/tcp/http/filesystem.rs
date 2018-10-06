@@ -39,7 +39,7 @@ impl Responder {
         format!("{}", datetime.format("%a, %d %b %Y %H:%M:%S GMT"))
     }
 
-    pub fn get_rfc7231_as_systemtime(modified: &String) -> Option<SystemTime> {
+    pub fn get_rfc7231_as_systemtime(modified: &String) -> Result<SystemTime, String> {
         let offset = Utc::now();
         match offset
             .offset()
@@ -48,11 +48,13 @@ impl Responder {
             Ok(datetime) => {
                 datetime.with_timezone(&Utc);
                 let modified: SystemTime = datetime.into();
-                return Some(modified);
+                return Ok(modified);
             }
             Err(error) => {
-                eprintln!("Failed to parse '{}', error: {:?}", &modified, error);
-                return None;
+                return Err(format!(
+                    "Failed to parse '{}', error: {:?}",
+                    &modified, error
+                ));
             }
         }
     }
@@ -198,19 +200,19 @@ impl Responder {
                                     if let Some(if_modified_since) =
                                         request_message.headers.get("If-Modified-Since")
                                     {
-                                        if let Some(if_modified_since_systemtime) =
+                                        if let Ok(if_modified_since_systemtime) =
                                             Responder::get_rfc7231_as_systemtime(
                                                 &if_modified_since.to_string(),
                                             ) {
                                             if let Ok(duration) = last_modified
                                                 .duration_since(if_modified_since_systemtime)
                                             {
-                                                println!(
+                                                /* println!(
                                                     "{:?} vs {:?} = {}",
                                                     &if_modified_since_systemtime,
                                                     &last_modified,
                                                     duration.as_secs()
-                                                );
+                                                );  */
                                                 if duration.as_secs() <= 0 {
                                                     status_code = "304 Not Modified";
                                                     response_body = Vec::new();
@@ -451,11 +453,11 @@ mod tests {
                 let request = request::Message::from_tcp_stream(request_string.as_bytes()).unwrap();
 
                 let given_response = responder.respond(&request, &config, &socket).unwrap();
-                println!(
+                /* println!(
                     "request: {}, response: {:?}",
                     request_string,
                     str::from_utf8(&given_response)
-                );
+                ); */
                 assert_eq!(expected_response, given_response);
             }
         }
@@ -505,12 +507,12 @@ mod tests {
                 let request = request::Message::from_tcp_stream(request_string.as_bytes()).unwrap();
                 let given_response = responder.respond(&request, &config, &socket).unwrap();
 
-                println!(
+                /* println!(
                     "request: {}, response: {:?}, expected response: {:?}",
                     request_string,
                     str::from_utf8(&given_response),
                     str::from_utf8(&expected_response)
-                );
+                ); */
                 assert_eq!(expected_response, given_response);
             }
         }
@@ -606,12 +608,12 @@ mod tests {
                 let request = request::Message::from_tcp_stream(request_string.as_bytes()).unwrap();
                 let given_response = responder.respond(&request, &config, &socket).unwrap();
 
-                println!(
+                /* println!(
                     "request: {}, response: {:?}, expected response: {:?}",
                     request_string,
                     str::from_utf8(&given_response),
                     str::from_utf8(&expected_response)
-                );
+                ); */
                 assert_eq!(expected_response, given_response);
             }
         }

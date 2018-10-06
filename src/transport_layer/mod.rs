@@ -30,10 +30,9 @@ impl TCP {
         let config = application.get_config();
         let path = format!("{}:{}", &config.server_host, &config.server_port);
         let listener = TcpListener::bind(&path);
-        application.get_feedback().info(format!(
-            "Starting listening on TCP/IP connections to: {}",
-            &path
-        ));
+        application
+            .get_feedback()
+            .info(format!("Listening on TCP connections to {}", &path));
 
         match listener {
             Ok(listener) => {
@@ -41,10 +40,9 @@ impl TCP {
                 loop {
                     match listener.accept() {
                         Ok((stream, socket)) => {
-                            application.get_feedback().info(format!(
-                                "Received new TCP/IP stream from {}",
-                                socket
-                            ));
+                            application
+                                .get_feedback()
+                                .info(format!("Received new TCP/IP stream from {}", socket));
                             let application = application.clone();
                             let responders = responders.clone();
                             pool.execute(move || {
