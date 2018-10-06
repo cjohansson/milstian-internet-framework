@@ -1,16 +1,21 @@
 //! # Handles the workers
 
+// TODO Add tests to this file
+
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 
-pub struct Pool {
+use Application;
+
+pub struct Pool<'a> {
+    application: &'a Application,
     workers: Vec<Worker>,
     sender: mpsc::Sender<Message>,
 }
 
-impl Pool {
+impl<'a> Pool<'a> {
     /// Create a job from a closure and send for execution
     pub fn execute<F>(&self, f: F)
     where
@@ -27,8 +32,11 @@ impl Pool {
     }
 
     /// Create a new mutex channel with specified number of receivers
-    pub fn new(size: usize) -> Pool {
+    pub fn new(application: &'a Application, size: usize) -> Pool {
         assert!(size > 0);
+        application
+            .get_feedback()
+            .info(format!("Starting {} new workers", size));
 
         let (sender, receiver) = mpsc::channel();
 
@@ -37,40 +45,56 @@ impl Pool {
         let mut workers = Vec::with_capacity(size);
 
         for id in 0..size {
-            workers.push(Worker::new(id, Arc::clone(&receiver)));
+            workers.push(Worker::new(&application, id, Arc::clone(&receiver)));
         }
 
-        Pool { workers, sender }
+        Pool {
+            application,
+            sender,
+            workers,
+        }
     }
 }
 
-impl Drop for Pool {
+impl<'a> Drop for Pool<'a> {
     fn drop(&mut self) {
-        println!("Sending terminate message to all workers.");
+        self.application
+            .get_feedback()
+            .info("Sending terminate message to all workers.".to_string());
 
         // Identical number of terminate messages and workers assure
         // all workers will receive the message
         for _ in &mut self.workers {
             if let Err(error) = self.sender.send(Message::Terminate) {
-                println!("Failed to send a termination message, error: {:?}", error);
+                self.application.get_feedback().error(format!(
+                    "Failed to send a termination message, error: {:?}",
+                    error
+                ));
             }
         }
 
-        println!("Shutting down all workers.");
+        self.application
+            .get_feedback()
+            .info("Shutting down all workers.".to_string());
 
         // Join every workers thread
         for worker in &mut self.workers {
-            println!("Shutting down worker {}", worker.id);
+            self.application
+                .get_feedback()
+                .info(format!("Shutting down worker {}", worker.id));
 
             if let Some(thread) = worker.thread.take() {
                 if let Err(error) = thread.join() {
-                    println!(
+                    self.application.get_feedback().info(format!(
                         "Failed to join thread {:?}, error: {:?}",
                         worker.thread, error
-                    );
+                    ));
                 }
             } else {
-                println!("Failed to take ownership of thread {:?}", worker.thread);
+                self.application.get_feedback().info(format!(
+                    "Failed to take ownership of thread {:?}",
+                    worker.thread
+                ));
             }
         }
     }
@@ -81,19 +105,31 @@ pub struct Worker {
     thread: Option<thread::JoinHandle<()>>,
 }
 
-impl Worker {
-    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
+impl<'a> Worker {
+    fn new(
+        application: &'a Application,
+        id: usize,
+        receiver: Arc<Mutex<mpsc::Receiver<Message>>>,
+    ) -> Worker {
+        let application_clone = application.clone();
+
         let thread = thread::spawn(move || loop {
             if let Ok(lock) = receiver.lock() {
                 if let Ok(message) = lock.recv() {
                     match message {
                         Message::NewJob(job) => {
-                            println!("Worker {} started executing", id);
+                            application_clone
+                                .get_feedback()
+                                .info(format!("Worker {} started executing", id));
                             job.call_box();
-                            println!("Worker {} finished executing", id);
+                            application_clone
+                                .get_feedback()
+                                .info(format!("Worker {} finished executing", id));
                         }
                         Message::Terminate => {
-                            println!("Worker {} was told to terminate", id);
+                            application_clone
+                                .get_feedback()
+                                .info(format!("Worker {} was told to terminate", id));
                             break;
                         }
                     }

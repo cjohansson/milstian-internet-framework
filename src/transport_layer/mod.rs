@@ -36,7 +36,7 @@ impl TCP {
 
         match listener {
             Ok(listener) => {
-                let pool = Pool::new(config.server_limit);
+                let pool = Pool::new(&application, config.server_limit);
                 loop {
                     match listener.accept() {
                         Ok((stream, socket)) => {
