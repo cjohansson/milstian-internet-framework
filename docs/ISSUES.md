@@ -4,9 +4,9 @@ Here I have collected what is left to-do.
 
 ## TCP-HTTP
 
-* Output in proper logging format (see nginx and httpd)
 * Support content-encodings: gzip, compress, deflate, identity, br
 * Make it easy to use third-party libraries like HTTP over TLS for HTTPS
+* Support TCP requests that exceeds limit with a error responder
 
 ## General
 
