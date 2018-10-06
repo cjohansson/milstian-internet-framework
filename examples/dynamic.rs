@@ -24,7 +24,7 @@ impl ResponderInterface for Responder {
     fn matches(
         &mut self,
         request_message: &request::Message,
-        _config: &Config,
+        _application: &Application,
         _socket: &SocketAddr,
     ) -> bool {
         match request_message.request_line.query_arguments.get("test") {
@@ -41,7 +41,7 @@ impl ResponderInterface for Responder {
     fn respond(
         &self,
         request_message: &request::Message,
-        _config: &Config,
+        _application: &Application,
         _socket: &SocketAddr,
     ) -> Result<Vec<u8>, String> {
         if let Some(route) = &self.route {
@@ -76,7 +76,5 @@ impl ResponderInterface for Responder {
 
 fn main() {
     let config = Config::from_env().expect("Failed to get configuration from environment");
-    Application::new(config).tcp_http_with_legacy_and_custom_responders(
-        Box::new(Responder::new()),
-    );
+    Application::new(config).tcp_http_with_legacy_and_custom_responders(Box::new(Responder::new()));
 }

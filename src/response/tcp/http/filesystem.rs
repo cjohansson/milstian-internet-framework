@@ -22,7 +22,7 @@ use application_layer::http::response;
 
 use mime;
 use response::tcp::http::ResponderInterface;
-use Config;
+use Application;
 
 #[derive(Clone)]
 pub struct Responder {
@@ -65,16 +65,16 @@ impl Responder {
         hasher.finish().to_string()
     }
 
-    pub fn get_cache_control(_config: &Config) -> String {
+    pub fn get_cache_control(_application: &Application) -> String {
         return "max-age=2592000".to_string(); // TODO Make this dynamic?
     }
 
     pub fn get_matching_filename(
         request_message: &request::Message,
-        config: &Config,
+        application: &Application,
     ) -> Option<String> {
         let mut filename = request_message.request_line.request_uri_base.clone();
-        filename = format!("{}{}", &config.filesystem_root, &filename);
+        filename = format!("{}{}", application.get_config().filesystem_root, &filename);
         let temp_filename = PathBuf::from(&filename);
         let mut is_dir = false;
         match fs::canonicalize(&temp_filename) {
@@ -84,7 +84,7 @@ impl Responder {
                         let mut filename = canonical_filename_string.to_string();
 
                         // Is the file inside file-system root?
-                        if filename.starts_with(&config.filesystem_root) {
+                        if filename.starts_with(&application.get_config().filesystem_root) {
                             let filename_copy = filename.clone();
                             let splits: Vec<&str> = filename_copy.rsplitn(2, '/').collect();
                             if let Some(basename) = splits.get(0) {
@@ -96,7 +96,7 @@ impl Responder {
                                         if is_dir {
                                             filename = format!(
                                                 "{}/{}",
-                                                &filename, &config.filesystem_directory_index
+                                                &filename, application.get_config().filesystem_directory_index
                                             );
                                             exists = Path::new(&filename).exists();
                                             is_dir = Path::new(&filename).is_dir()
@@ -121,7 +121,7 @@ impl Responder {
                         } else {
                             eprintln!(
                                 "File {} is outside of file-system root {}",
-                                &filename, &config.filesystem_root
+                                &filename, application.get_config().filesystem_root
                             );
                         }
                     }
@@ -147,7 +147,7 @@ impl Responder {
     pub fn get_response(
         filename: &String,
         request_message: &request::Message,
-        config: &Config,
+        application: &Application,
     ) -> Result<response::Message, String> {
         let mut response_body = Vec::new();
 
@@ -226,7 +226,7 @@ impl Responder {
 
                         headers.insert(
                             "Cache-Control".to_string(),
-                            Responder::get_cache_control(&config),
+                            Responder::get_cache_control(&application),
                         );
 
                         // Build HTTP response
@@ -259,10 +259,10 @@ impl ResponderInterface for Responder {
     fn matches(
         &mut self,
         request_message: &request::Message,
-        config: &Config,
+        application: &Application,
         _socket: &SocketAddr,
     ) -> bool {
-        if let Some(filename) = Responder::get_matching_filename(&request_message, &config) {
+        if let Some(filename) = Responder::get_matching_filename(&request_message, &application) {
             self.filename = Some(filename);
             return true;
         }
@@ -273,12 +273,12 @@ impl ResponderInterface for Responder {
     fn respond(
         &self,
         request_message: &request::Message,
-        config: &Config,
+        application: &Application,
         _socket: &SocketAddr,
     ) -> Result<Vec<u8>, String> {
         // Does filename exist?
         if let Some(filename) = &self.filename {
-            let mut response = Responder::get_response(&filename, &request_message, &config)?;
+            let mut response = Responder::get_response(&filename, &request_message, &application)?;
             // Build HTTP response
             return Ok(response.to_bytes());
         } else {
@@ -291,7 +291,7 @@ impl ResponderInterface for Responder {
 mod tests {
     use super::*;
     use std::net::{IpAddr, Ipv4Addr};
-    use std::str;
+    use Config;
 
     #[test]
     fn matches() {
@@ -306,17 +306,18 @@ mod tests {
             server_port: 4040,
             tcp_limit: 1024,
         };
+        let application = Application::new(config);
 
         let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
         let mut responder = Responder::new();
         assert!(responder.matches(
             &request::Message::from_tcp_stream(b"GET / HTTP/1.0").unwrap(),
-            &config,
+            &application,
             &socket
         ));
         assert!(responder.matches(
             &request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.0").unwrap(),
-            &config,
+            &application,
             &socket
         ));
 
@@ -327,23 +328,23 @@ mod tests {
         request.push(0);
         assert!(responder.matches(
             &request::Message::from_tcp_stream(&request).unwrap(),
-            &config,
+            &application,
             &socket
         ));
 
         assert!(!responder.matches(
             &request::Message::from_tcp_stream(b"GET /../README.md HTTP/1.0").unwrap(),
-            &config,
+            &application,
             &socket
         ));
         assert!(!responder.matches(
             &request::Message::from_tcp_stream(b"GET /.DS_Store HTTP/1.0").unwrap(),
-            &config,
+            &application,
             &socket
         ));
         assert!(!responder.matches(
             &request::Message::from_tcp_stream(b"GET /test.htm HTTP/1.1").unwrap(),
-            &config,
+            &application,
             &socket
         ));
     }
@@ -361,6 +362,7 @@ mod tests {
             server_port: 4040,
             tcp_limit: 1024,
         };
+        let application = Application::new(config);
         let mut responder = Responder::new();
         let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
         let filename = "html/index.htm";
@@ -373,7 +375,7 @@ mod tests {
         file.read_to_string(&mut response_body).unwrap();
 
         let request = request::Message::from_tcp_stream(b"GET / HTTP/1.1\r\n\r\n").unwrap();
-        let matches = responder.matches(&request, &config, &socket);
+        let matches = responder.matches(&request, &application, &socket);
         assert!(matches);
 
         let mut headers: HashMap<String, String> = HashMap::new();
@@ -398,7 +400,7 @@ mod tests {
         headers.insert("Content-Type".to_string(), mime::from_filename(&filename));
         headers.insert(
             "Cache-Control".to_string(),
-            Responder::get_cache_control(&config),
+            Responder::get_cache_control(&application),
         );
 
         let expected_response = response::Message::new(
@@ -408,7 +410,7 @@ mod tests {
             response_body.into_bytes(),
         ).to_bytes();
 
-        let given_response = responder.respond(&request, &config, &socket).unwrap();
+        let given_response = responder.respond(&request, &application, &socket).unwrap();
         assert_eq!(expected_response, given_response);
 
         // Matching If Modified Since
@@ -434,7 +436,7 @@ mod tests {
                 headers.insert("Content-Type".to_string(), mime::from_filename(&filename));
                 headers.insert(
                     "Cache-Control".to_string(),
-                    Responder::get_cache_control(&config),
+                    Responder::get_cache_control(&application),
                 );
 
                 let response_body_empty = Vec::new();
@@ -452,7 +454,7 @@ mod tests {
                 );
                 let request = request::Message::from_tcp_stream(request_string.as_bytes()).unwrap();
 
-                let given_response = responder.respond(&request, &config, &socket).unwrap();
+                let given_response = responder.respond(&request, &application, &socket).unwrap();
                 /* println!(
                     "request: {}, response: {:?}",
                     request_string,
@@ -484,7 +486,7 @@ mod tests {
                 headers.insert("Content-Type".to_string(), mime::from_filename(&filename));
                 headers.insert(
                     "Cache-Control".to_string(),
-                    Responder::get_cache_control(&config),
+                    Responder::get_cache_control(&application),
                 );
 
                 // Build response body
@@ -505,7 +507,7 @@ mod tests {
                     Responder::get_metadata_modified_as_rfc7231(last_modified - duration)
                 );
                 let request = request::Message::from_tcp_stream(request_string.as_bytes()).unwrap();
-                let given_response = responder.respond(&request, &config, &socket).unwrap();
+                let given_response = responder.respond(&request, &application, &socket).unwrap();
 
                 /* println!(
                     "request: {}, response: {:?}, expected response: {:?}",
@@ -545,7 +547,7 @@ mod tests {
                 headers.insert("Content-Type".to_string(), mime::from_filename(&filename));
                 headers.insert(
                     "Cache-Control".to_string(),
-                    Responder::get_cache_control(&config),
+                    Responder::get_cache_control(&application),
                 );
 
                 let response_body = Vec::new();
@@ -557,7 +559,7 @@ mod tests {
                     response_body,
                 ).to_bytes();
 
-                let given_response = responder.respond(&request, &config, &socket).unwrap();
+                let given_response = responder.respond(&request, &application, &socket).unwrap();
                 assert_eq!(expected_response, given_response);
             }
         }
@@ -584,7 +586,7 @@ mod tests {
                 headers.insert("Content-Type".to_string(), mime::from_filename(&filename));
                 headers.insert(
                     "Cache-Control".to_string(),
-                    Responder::get_cache_control(&config),
+                    Responder::get_cache_control(&application),
                 );
 
                 // Build response body
@@ -606,7 +608,7 @@ mod tests {
                     Responder::get_modified_hash(&last_modified)
                 );
                 let request = request::Message::from_tcp_stream(request_string.as_bytes()).unwrap();
-                let given_response = responder.respond(&request, &config, &socket).unwrap();
+                let given_response = responder.respond(&request, &application, &socket).unwrap();
 
                 /* println!(
                     "request: {}, response: {:?}, expected response: {:?}",

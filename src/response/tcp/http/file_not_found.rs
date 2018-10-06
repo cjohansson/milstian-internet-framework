@@ -7,7 +7,7 @@ use std::path::Path;
 use application_layer::http::request;
 use response::tcp::http::filesystem;
 use response::tcp::http::ResponderInterface;
-use Config;
+use Application;
 
 #[derive(Clone)]
 pub struct Responder {
@@ -24,19 +24,19 @@ impl ResponderInterface for Responder {
     fn matches(
         &mut self,
         _request_message: &request::Message,
-        config: &Config,
+        application: &Application,
         _socket: &SocketAddr,
     ) -> bool {
         let filename = format!(
             "{}/{}",
-            &config.filesystem_root, &config.file_not_found_file
+            application.get_config().filesystem_root, application.get_config().file_not_found_file
         );
         let exists = Path::new(&filename).exists();
         let mut is_dir = false;
         if exists {
             is_dir = Path::new(&filename).is_dir();
             if is_dir {
-                eprintln!("File not found because file is directory {}", &filename);
+                eprintln!("File not found because file is a directory {}", &filename);
             }
         } else {
             eprintln!("File not found file does not exists {}", &filename);
@@ -48,12 +48,12 @@ impl ResponderInterface for Responder {
     fn respond(
         &self,
         request_message: &request::Message,
-        config: &Config,
+        application: &Application,
         _socket: &SocketAddr,
     ) -> Result<Vec<u8>, String> {
         if let Some(filename) = &self.filename {
             let mut response =
-                filesystem::Responder::get_response(filename, &request_message, &config)?;
+                filesystem::Responder::get_response(filename, &request_message, &application)?;
             response.set_status("404 File Not Found".to_string());
             return Ok(response.to_bytes());
         } else {
@@ -76,6 +76,8 @@ mod tests {
     use application_layer::http::response;
     use mime;
 
+    use Config;
+
     #[test]
     fn matches() {
         let config = Config {
@@ -89,21 +91,22 @@ mod tests {
             server_port: 4040,
             tcp_limit: 1024,
         };
+        let application = Application::new(config);
         let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
         let mut responder = Responder::new();
         assert!(responder.matches(
             &request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.0").unwrap(),
-            &config,
+            &application,
             &socket
         ));
         assert!(responder.matches(
             &request::Message::from_tcp_stream(b"GET /index3.htm HTTP/1.0").unwrap(),
-            &config,
+            &application,
             &socket
         ));
         assert!(responder.matches(
             &request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.1").unwrap(),
-            &config,
+            &application,
             &socket
         ));
 
@@ -118,10 +121,11 @@ mod tests {
             server_port: 4040,
             tcp_limit: 1024,
         };
+        let application = Application::new(config);
         let mut responder = Responder::new();
         assert!(!responder.matches(
             &request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.0").unwrap(),
-            &config,
+            &application,
             &socket
         ));
     }
@@ -139,6 +143,7 @@ mod tests {
             server_port: 4040,
             tcp_limit: 1024,
         };
+        let application = Application::new(config);
         let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
         let mut responder = Responder::new();
 
@@ -154,7 +159,7 @@ mod tests {
         let request =
             request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.1\r\n\r\n").unwrap();
 
-        let matches = responder.matches(&request, &config, &socket);
+        let matches = responder.matches(&request, &application, &socket);
         assert!(matches);
 
         let mut headers: HashMap<String, String> = HashMap::new();
@@ -181,7 +186,7 @@ mod tests {
         headers.insert("Content-Type".to_string(), mime::from_filename(&filename));
         headers.insert(
             "Cache-Control".to_string(),
-            filesystem::Responder::get_cache_control(&config),
+            filesystem::Responder::get_cache_control(&application),
         );
 
         let expected_response = response::Message::new(
@@ -191,7 +196,7 @@ mod tests {
             response_body.into_bytes(),
         ).to_bytes();
 
-        let given_response = responder.respond(&request, &config, &socket).unwrap();
+        let given_response = responder.respond(&request, &application, &socket).unwrap();
         assert_eq!(expected_response, given_response);
     }
 }

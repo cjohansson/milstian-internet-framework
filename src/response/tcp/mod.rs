@@ -76,8 +76,8 @@ impl Dispatcher {
                 let mut response = Vec::new();
                 let mut http_dispatcher = http::Dispatcher::new();
 
-                if http_dispatcher.matches(&buffer, &config, &socket) {
-                    match http_dispatcher.respond(&buffer, &config, &socket, responders) {
+                if http_dispatcher.matches(&buffer, &application, &socket) {
+                    match http_dispatcher.respond(&buffer, &application, &socket, responders) {
                         Ok(http_response) => {
                             response = http_response;
                             application

@@ -6,7 +6,7 @@ use application_layer::http::response;
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use Config;
+use Application;
 
 use response::tcp::http::ResponderInterface;
 
@@ -23,7 +23,7 @@ impl ResponderInterface for Responder {
     fn matches(
         &mut self,
         _request_message: &request::Message,
-        _config: &Config,
+        _application: &Application,
         _socket: &SocketAddr,
     ) -> bool {
         true
@@ -32,7 +32,7 @@ impl ResponderInterface for Responder {
     fn respond(
         &self,
         request_message: &request::Message,
-        _config: &Config,
+        _application: &Application,
         _socket: &SocketAddr,
     ) -> Result<Vec<u8>, String> {
         let status_code = "500 Internal Server Error";
@@ -59,6 +59,8 @@ mod tests {
 
     use application_layer::http::response;
 
+    use Config;
+
     #[test]
     fn test_matches() {
         let config = Config {
@@ -72,13 +74,14 @@ mod tests {
             server_port: 4040,
             tcp_limit: 1024,
         };
+        let application = Application::new(config);
         let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
         let mut responder = Responder::new();
         assert!(
             responder.matches(
                 &request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.0")
                     .expect("Expecting index2.htm response"),
-                &config,
+                &application,
                 &socket
             )
         );
@@ -86,7 +89,7 @@ mod tests {
             responder.matches(
                 &request::Message::from_tcp_stream(b"GET /index3.htm HTTP/1.0")
                     .expect("Expecting index3.htm response"),
-                &config,
+                &application,
                 &socket
             )
         );
@@ -94,7 +97,7 @@ mod tests {
             responder.matches(
                 &request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.1")
                     .expect("Expecting index.htm response"),
-                &config,
+                &application,
                 &socket
             )
         );
@@ -113,6 +116,7 @@ mod tests {
             server_port: 4040,
             tcp_limit: 1024,
         };
+        let application = Application::new(config);
         let mut responder = Responder::new();
         let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
 
@@ -120,7 +124,7 @@ mod tests {
         let response_body = String::new();
         let request =
             request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.1\r\n\r\n").unwrap();
-        let matches = responder.matches(&request, &config, &socket);
+        let matches = responder.matches(&request, &application, &socket);
         assert!(matches);
 
         let headers: HashMap<String, String> = HashMap::new();
@@ -132,7 +136,7 @@ mod tests {
             response_body.into_bytes(),
         ).to_bytes();
 
-        let given_response = responder.respond(&request, &config, &socket).unwrap();
+        let given_response = responder.respond(&request, &application, &socket).unwrap();
         assert_eq!(expected_response, given_response);
     }
 }
