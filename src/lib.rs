@@ -43,9 +43,9 @@ use response::tcp::http::{error, file_not_found, filesystem, ResponderInterface}
 /// # Holds application configuration, can be created in different ways.
 /// ## From environment:
 /// ```rust
-///use milstian_internet_framework::Config;
-///let config = Config::from_env();
-///assert!(config.is_err()); // Expected fail since environment variables is missing
+/// use milstian_internet_framework::Config;
+/// let config = Config::from_env();
+/// assert!(config.is_err()); // Expected fail since environment variables is missing
 /// ```
 pub struct Config {
     pub feedback_error_file: Option<String>,
@@ -122,6 +122,7 @@ impl Config {
     /// ```rust
     /// use milstian_internet_framework::Config;
     /// let config = Config::from_env();
+    /// assert!(config.is_err()); // Expected fail since environment variables is missing
     /// ```
     pub fn from_env() -> Result<Config, String> {
         Config::from_env_args(env::args().collect())
@@ -133,7 +134,8 @@ impl Config {
 /// ## TCP/IP HTTP static application:
 /// ```rust,should_panic
 /// use milstian_internet_framework::{Application, Config};
-/// Application::tcp_http_with_legacy_responders(Config::from_env());
+/// let config = Config::from_env().expect("Failed to get configuration from environment");
+/// Application::new(config).tcp_http_with_legacy_responders();
 /// ```
 #[derive(Clone, Debug)]
 pub struct Application {
@@ -169,7 +171,8 @@ impl Application {
     ///         Box::new(filesystem::Responder::new()),
     ///         Box::new(error::Responder::new()),
     ///     ];
-    ///     Application::tcp_http(Config::from_env(), responders);
+    ///     let config = Config::from_env().expect("Failed to get configuration from environment");
+    ///     Application::new(config).tcp_http(responders);
     /// }
     /// ```
     // TODO Use example that doesn't panic
@@ -183,7 +186,8 @@ impl Application {
     /// extern crate milstian_internet_framework;
     /// use milstian_internet_framework::{Application, Config};
     /// fn main() {
-    ///     Application::tcp_http_with_legacy_responders(Config::from_env());
+    ///     let config = Config::from_env().expect("Failed to get configuration from environment");
+    ///     Application::new(config).tcp_http_with_legacy_responders();
     /// }
     /// ```
     // TODO Use example that doesn't panic
@@ -200,7 +204,8 @@ impl Application {
     /// ```rust,should_panic
     /// use milstian_internet_framework::{Application, Config};
     /// fn main() {
-    ///     Application::tcp_http_with_legacy_responders(Config::from_env());
+    ///     let config = Config::from_env().expect("Failed to get configuration from environment");
+    ///     Application::new(config).tcp_http_with_legacy_responders();
     /// }
     /// ```
     // TODO Use example that doesn't panic

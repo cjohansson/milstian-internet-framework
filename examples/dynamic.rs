@@ -75,8 +75,8 @@ impl ResponderInterface for Responder {
 }
 
 fn main() {
-    Application::tcp_http_with_legacy_and_custom_responders(
-        Config::from_env(),
+    let config = Config::from_env().expect("Failed to get configuration from environment");
+    Application::new(config).tcp_http_with_legacy_and_custom_responders(
         Box::new(Responder::new()),
     );
 }
