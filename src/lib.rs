@@ -131,7 +131,7 @@ impl Config {
 
 /// # Main entry point for a new application.
 /// Could in the future support multiple transport layers and application layers.
-/// ## TCP/IP HTTP static application:
+/// ## TCP HTTP static application:
 /// ```rust,should_panic
 /// use milstian_internet_framework::{Application, Config};
 /// let config = Config::from_env().expect("Failed to get configuration from environment");
@@ -160,7 +160,7 @@ impl Application {
         &self.feedback
     }
 
-    /// Create a new TCP/IP HTTP application
+    /// Create a new TCP HTTP application
     /// # Example
     /// ```rust,should_panic
     /// extern crate milstian_internet_framework;
@@ -180,7 +180,7 @@ impl Application {
         transport_layer::TCP::http(&self, responders)
     }
 
-    /// Create a new TCP/IP HTTP application with the legacy responders
+    /// Create a new TCP HTTP application with the legacy responders
     /// # Example
     /// ```rust,should_panic
     /// extern crate milstian_internet_framework;
@@ -200,7 +200,7 @@ impl Application {
         transport_layer::TCP::http(&self, responders)
     }
 
-    /// # Create a new TCP/IP with legacy and a custom responder
+    /// # Create a new TCP with legacy and a custom responder
     /// ```rust,should_panic
     /// use milstian_internet_framework::{Application, Config};
     /// fn main() {

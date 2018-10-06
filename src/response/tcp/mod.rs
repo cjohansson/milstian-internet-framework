@@ -1,4 +1,4 @@
-//! # Namespace for TCP/IP responses
+//! # Namespace for TCP responses
 
 pub mod http;
 

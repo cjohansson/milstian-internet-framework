@@ -42,7 +42,7 @@ impl TCP {
                         Ok((stream, socket)) => {
                             application
                                 .get_feedback()
-                                .info(format!("Received new TCP/IP stream from {}", socket));
+                                .info(format!("Received new TCP stream from {}", socket));
                             let application = application.clone();
                             let responders = responders.clone();
                             pool.execute(move || {

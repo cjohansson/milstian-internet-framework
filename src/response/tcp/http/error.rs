@@ -1,4 +1,4 @@
-//! # TCP/IP HTTP Error response
+//! # TCP HTTP Error response
 //! Used for responding a general error.
 
 use application_layer::http::request;
