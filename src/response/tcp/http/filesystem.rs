@@ -96,7 +96,8 @@ impl Responder {
                                         if is_dir {
                                             filename = format!(
                                                 "{}/{}",
-                                                &filename, application.get_config().filesystem_directory_index
+                                                &filename,
+                                                application.get_config().filesystem_directory_index
                                             );
                                             exists = Path::new(&filename).exists();
                                             is_dir = Path::new(&filename).is_dir()
@@ -121,7 +122,8 @@ impl Responder {
                         } else {
                             eprintln!(
                                 "File {} is outside of file-system root {}",
-                                &filename, application.get_config().filesystem_root
+                                &filename,
+                                application.get_config().filesystem_root
                             );
                         }
                     }

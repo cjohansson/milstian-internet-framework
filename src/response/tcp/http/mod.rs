@@ -23,7 +23,12 @@ impl Dispatcher {
 }
 
 impl Dispatcher {
-    pub fn matches(&mut self, request: &[u8], _application: &Application, _socket: &SocketAddr) -> bool {
+    pub fn matches(
+        &mut self,
+        request: &[u8],
+        _application: &Application,
+        _socket: &SocketAddr,
+    ) -> bool {
         if let Some(request_message) = request::Message::from_tcp_stream(request) {
             self.request_message = Some(request_message);
             return true;
@@ -46,7 +51,7 @@ impl Dispatcher {
             }
         }
 
-        return Err("Found no matching HTTP response".to_string());
+        return Err("Found no matching HTTP responder".to_string());
     }
 }
 

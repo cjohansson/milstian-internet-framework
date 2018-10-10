@@ -37,7 +37,7 @@ impl Dispatcher {
                 }
             }
 
-            // Did we read maximum number of bytes?
+            // Did we read the maximum number of bytes and does the limit exceed this?
             if read_size == 512 && config.tcp_limit > 512 {
                 loop {
                     match stream.read(&mut temp_buffer) {
@@ -77,6 +77,9 @@ impl Dispatcher {
                 let mut http_dispatcher = http::Dispatcher::new();
 
                 if http_dispatcher.matches(&buffer, &application, &socket) {
+                    application
+                        .get_feedback()
+                        .info(format!("Request could be decoded as HTTP"));
                     match http_dispatcher.respond(&buffer, &application, &socket, responders) {
                         Ok(http_response) => {
                             response = http_response;
@@ -90,9 +93,22 @@ impl Dispatcher {
                                 .error(format!("Got empty HTTP response! Error: {}", error));
                         }
                     }
+                } else {
+                    application
+                        .get_feedback()
+                        .info(format!("Request could not be decoded as HTTP"));
                 }
 
                 if !response.is_empty() {
+                    if let Some(message) = http_dispatcher.request_message {
+                        // TODO Add referrer URL and agent here
+                        application.get_feedback().info(format!(
+                            "{} \"{}\"",
+                            socket,
+                            message.request_line.raw
+                        ));
+                    }
+
                     match stream.write(&response) {
                         Ok(_) => {
                             if let Err(error) = stream.flush() {
