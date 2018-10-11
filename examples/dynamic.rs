@@ -43,7 +43,7 @@ impl ResponderInterface for Responder {
         request_message: &request::Message,
         _application: &Application,
         _socket: &SocketAddr,
-    ) -> Result<Vec<u8>, String> {
+    ) -> Result<response::Message, String> {
         if let Some(route) = &self.route {
             let protocol =
                 request::Message::get_protocol_text(&request_message.request_line.protocol);
@@ -67,7 +67,7 @@ impl ResponderInterface for Responder {
                 "200 OK".to_string(),
                 headers,
                 output.as_bytes().to_vec(),
-            ).to_bytes());
+            ));
         } else {
             Err("No result".to_string())
         }

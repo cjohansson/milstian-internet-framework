@@ -5,6 +5,8 @@ use std::net::SocketAddr;
 use std::path::Path;
 
 use application_layer::http::request;
+use application_layer::http::response;
+
 use response::tcp::http::filesystem;
 use response::tcp::http::ResponderInterface;
 use Application;
@@ -29,7 +31,8 @@ impl ResponderInterface for Responder {
     ) -> bool {
         let filename = format!(
             "{}/{}",
-            application.get_config().filesystem_root, application.get_config().file_not_found_file
+            application.get_config().filesystem_root,
+            application.get_config().file_not_found_file
         );
         let exists = Path::new(&filename).exists();
         let mut is_dir = false;
@@ -50,12 +53,12 @@ impl ResponderInterface for Responder {
         request_message: &request::Message,
         application: &Application,
         _socket: &SocketAddr,
-    ) -> Result<Vec<u8>, String> {
+    ) -> Result<response::Message, String> {
         if let Some(filename) = &self.filename {
             let mut response =
                 filesystem::Responder::get_response(filename, &request_message, &application)?;
             response.set_status("404 File Not Found".to_string());
-            return Ok(response.to_bytes());
+            return Ok(response);
         } else {
             return Err("Error: File Not Found Filename missing".to_string());
         }
@@ -196,7 +199,10 @@ mod tests {
             response_body.into_bytes(),
         ).to_bytes();
 
-        let given_response = responder.respond(&request, &application, &socket).unwrap();
+        let given_response = responder
+            .respond(&request, &application, &socket)
+            .unwrap()
+            .to_bytes();
         assert_eq!(expected_response, given_response);
     }
 }

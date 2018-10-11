@@ -277,12 +277,12 @@ impl ResponderInterface for Responder {
         request_message: &request::Message,
         application: &Application,
         _socket: &SocketAddr,
-    ) -> Result<Vec<u8>, String> {
+    ) -> Result<response::Message, String> {
         // Does filename exist?
         if let Some(filename) = &self.filename {
             let mut response = Responder::get_response(&filename, &request_message, &application)?;
             // Build HTTP response
-            return Ok(response.to_bytes());
+            return Ok(response);
         } else {
             return Err("Error: Filename missing".to_string());
         }
@@ -412,7 +412,10 @@ mod tests {
             response_body.into_bytes(),
         ).to_bytes();
 
-        let given_response = responder.respond(&request, &application, &socket).unwrap();
+        let given_response = responder
+            .respond(&request, &application, &socket)
+            .unwrap()
+            .to_bytes();
         assert_eq!(expected_response, given_response);
 
         // Matching If Modified Since
@@ -456,7 +459,10 @@ mod tests {
                 );
                 let request = request::Message::from_tcp_stream(request_string.as_bytes()).unwrap();
 
-                let given_response = responder.respond(&request, &application, &socket).unwrap();
+                let given_response = responder
+                    .respond(&request, &application, &socket)
+                    .unwrap()
+                    .to_bytes();
                 /* println!(
                     "request: {}, response: {:?}",
                     request_string,
@@ -509,7 +515,10 @@ mod tests {
                     Responder::get_metadata_modified_as_rfc7231(last_modified - duration)
                 );
                 let request = request::Message::from_tcp_stream(request_string.as_bytes()).unwrap();
-                let given_response = responder.respond(&request, &application, &socket).unwrap();
+                let given_response = responder
+                    .respond(&request, &application, &socket)
+                    .unwrap()
+                    .to_bytes();
 
                 /* println!(
                     "request: {}, response: {:?}, expected response: {:?}",
@@ -561,7 +570,10 @@ mod tests {
                     response_body,
                 ).to_bytes();
 
-                let given_response = responder.respond(&request, &application, &socket).unwrap();
+                let given_response = responder
+                    .respond(&request, &application, &socket)
+                    .unwrap()
+                    .to_bytes();
                 assert_eq!(expected_response, given_response);
             }
         }
@@ -610,7 +622,10 @@ mod tests {
                     Responder::get_modified_hash(&last_modified)
                 );
                 let request = request::Message::from_tcp_stream(request_string.as_bytes()).unwrap();
-                let given_response = responder.respond(&request, &application, &socket).unwrap();
+                let given_response = responder
+                    .respond(&request, &application, &socket)
+                    .unwrap()
+                    .to_bytes();
 
                 /* println!(
                     "request: {}, response: {:?}, expected response: {:?}",

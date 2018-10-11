@@ -34,7 +34,7 @@ impl ResponderInterface for Responder {
         request_message: &request::Message,
         _application: &Application,
         _socket: &SocketAddr,
-    ) -> Result<Vec<u8>, String> {
+    ) -> Result<response::Message, String> {
         let status_code = "500 Internal Server Error";
         let protocol = request::Message::get_protocol_text(&request_message.request_line.protocol);
         let headers: HashMap<String, String> = HashMap::new();
@@ -46,7 +46,7 @@ impl ResponderInterface for Responder {
             status_code.to_string(),
             headers,
             response_body,
-        ).to_bytes());
+        ));
     }
 }
 
@@ -136,7 +136,7 @@ mod tests {
             response_body.into_bytes(),
         ).to_bytes();
 
-        let given_response = responder.respond(&request, &application, &socket).unwrap();
+        let given_response = responder.respond(&request, &application, &socket).unwrap().to_bytes();
         assert_eq!(expected_response, given_response);
     }
 }
