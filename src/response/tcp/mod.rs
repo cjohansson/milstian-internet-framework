@@ -80,7 +80,7 @@ impl Dispatcher {
                 if http_dispatcher.matches(&buffer, &application, &socket) {
                     application
                         .get_feedback()
-                        .info(format!("Request could be decoded as HTTP"));
+                        .info(format!("Request was successfully decoded as HTTP"));
                     match http_dispatcher.respond(&buffer, &application, &socket, responders) {
                         Ok((http_response, http_log)) => {
                             response = http_response;
@@ -102,9 +102,7 @@ impl Dispatcher {
                 }
 
                 if !response.is_empty() {
-                    application
-                        .get_feedback()
-                        .info(log);
+                    application.get_feedback().info(log);
                     match stream.write(&response) {
                         Ok(_) => {
                             if let Err(error) = stream.flush() {
