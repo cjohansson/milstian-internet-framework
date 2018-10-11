@@ -57,7 +57,7 @@ impl ResponderInterface for Responder {
         if let Some(filename) = &self.filename {
             let mut response =
                 filesystem::Responder::get_response(filename, &request_message, &application)?;
-            response.set_status("404 File Not Found".to_string());
+            response.status = "404 File Not Found".to_string();
             return Ok(response);
         } else {
             return Err("Error: File Not Found Filename missing".to_string());

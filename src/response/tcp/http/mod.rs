@@ -63,8 +63,8 @@ impl Dispatcher {
                             }
                             // TODO: Add response status code and response size here as well?
                             log = format!(
-                                "HTTP access - \"{}\",\"{}\",\"{}\",\"{}\"",
-                                socket, &request_message.request_line.raw, agent, referer
+                                "HTTP access - \"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"",
+                                socket, &request_message.request_line.raw, agent, referer, &response.status, &response.body.len()
                             );
                         }
                         return Ok((response.to_bytes(), log));
