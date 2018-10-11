@@ -1,6 +1,7 @@
 //! # Handles the workers
 
 // TODO Add tests to this file
+use std::time::SystemTime;
 
 use std::sync::mpsc;
 use std::sync::Arc;
@@ -118,13 +119,19 @@ impl<'a> Worker {
                 if let Ok(message) = lock.recv() {
                     match message {
                         Message::NewJob(job) => {
+                            let start = SystemTime::now();
                             application_clone
                                 .get_feedback()
                                 .info(format!("Worker {} started executing", id));
                             job.call_box();
-                            application_clone
-                                .get_feedback()
-                                .info(format!("Worker {} finished executing", id));
+                            let mut elapsed = 0;
+                            if let Ok(time_elapsed) = start.elapsed() {
+                                elapsed = time_elapsed.as_secs();
+                            }
+                            application_clone.get_feedback().info(format!(
+                                "Worker {} finished executing after {} s.",
+                                id, elapsed
+                            ));
                         }
                         Message::Terminate => {
                             application_clone

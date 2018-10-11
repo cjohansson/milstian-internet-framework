@@ -49,7 +49,8 @@ impl Dispatcher {
         if let Some(request_message) = &self.request_message {
             for mut responder in responders.into_iter() {
                 if responder.matches(&request_message, &application, &socket) {
-                    if let Ok(mut response) = responder.respond(&request_message, &application, &socket)
+                    if let Ok(mut response) =
+                        responder.respond(&request_message, &application, &socket)
                     {
                         let mut log = String::new();
                         if let Some(request_message) = &self.request_message {
@@ -61,10 +62,14 @@ impl Dispatcher {
                             if let Some(http_referer) = request_message.headers.get("Referer") {
                                 referer = http_referer.to_string();
                             }
-                            // TODO: Add response status code and response size here as well?
                             log = format!(
                                 "HTTP access - \"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"",
-                                socket, &request_message.request_line.raw, agent, referer, &response.status, &response.body.len()
+                                socket,
+                                &request_message.request_line.raw,
+                                agent,
+                                referer,
+                                &response.status,
+                                &response.body.len()
                             );
                         }
                         return Ok((response.to_bytes(), log));
