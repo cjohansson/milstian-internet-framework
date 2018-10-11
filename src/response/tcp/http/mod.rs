@@ -36,17 +36,28 @@ impl Dispatcher {
         false
     }
 
+    /// Make the first http response that matches respond
     pub fn respond(
         &self,
         _request: &[u8],
         application: &Application,
         socket: &SocketAddr,
         responders: Vec<Box<ResponderInterface + Send>>,
-    ) -> Result<Vec<u8>, String> {
+    ) -> Result<(Vec<u8>, String), String> {
         if let Some(request_message) = &self.request_message {
             for mut responder in responders.into_iter() {
                 if responder.matches(&request_message, &application, &socket) {
-                    return responder.respond(&request_message, &application, &socket);
+                    if let Ok(response) = responder.respond(&request_message, &application, &socket) {
+                        let mut log = String::new();
+                        if let Some(request_message) = &self.request_message {
+                            log = format!(
+                                "{} \"{}\"",
+                                socket,
+                                &request_message.request_line.raw
+                            );
+                        }
+                        return Ok((response, log));
+                    }
                 }
             }
         }

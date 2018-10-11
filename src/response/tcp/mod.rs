@@ -74,6 +74,7 @@ impl Dispatcher {
             if buffer.len() > 0 {
                 // println!("Found non-empty TCP blog {:?} b= {:?}", str::from_utf8(&buffer), buffer);
                 let mut response = Vec::new();
+                let mut log = String::new();
                 let mut http_dispatcher = http::Dispatcher::new();
 
                 if http_dispatcher.matches(&buffer, &application, &socket) {
@@ -81,8 +82,9 @@ impl Dispatcher {
                         .get_feedback()
                         .info(format!("Request could be decoded as HTTP"));
                     match http_dispatcher.respond(&buffer, &application, &socket, responders) {
-                        Ok(http_response) => {
+                        Ok((http_response, http_log)) => {
                             response = http_response;
+                            log = http_log;
                             application
                                 .get_feedback()
                                 .info(format!("Found non-empty HTTP response to TCP stream"));
@@ -100,15 +102,9 @@ impl Dispatcher {
                 }
 
                 if !response.is_empty() {
-                    if let Some(message) = http_dispatcher.request_message {
-                        // TODO Add referrer URL and agent here
-                        application.get_feedback().info(format!(
-                            "{} \"{}\"",
-                            socket,
-                            message.request_line.raw
-                        ));
-                    }
-
+                    application
+                        .get_feedback()
+                        .info(log);
                     match stream.write(&response) {
                         Ok(_) => {
                             if let Err(error) = stream.flush() {
