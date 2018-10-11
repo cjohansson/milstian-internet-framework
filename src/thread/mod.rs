@@ -124,13 +124,15 @@ impl<'a> Worker {
                                 .get_feedback()
                                 .info(format!("Worker {} started executing", id));
                             job.call_box();
-                            let mut elapsed = 0;
+                            let mut elapsed_secs = 0;
+                            let mut elapsed_millis = 0;
                             if let Ok(time_elapsed) = start.elapsed() {
-                                elapsed = time_elapsed.as_secs();
+                                elapsed_secs = time_elapsed.as_secs();
+                                elapsed_millis = time_elapsed.subsec_millis() / 1000;
                             }
                             application_clone.get_feedback().info(format!(
-                                "Worker {} finished executing after {} s.",
-                                id, elapsed
+                                "Worker {} finished executing after {}.{} s.",
+                                id, elapsed_secs, elapsed_millis
                             ));
                         }
                         Message::Terminate => {
