@@ -8,7 +8,6 @@ Here I have collected what is left to-do.
 * Make it easy to use third-party libraries like HTTP over TLS for HTTPS
 * Support TCP requests that exceeds limit with a error responder
 * Make integration-tests to verifies it's functionality
-* Should log response status code and request message line
 
 ## General
 
