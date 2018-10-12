@@ -128,10 +128,10 @@ impl<'a> Worker {
                             let mut elapsed_millis = 0;
                             if let Ok(time_elapsed) = start.elapsed() {
                                 elapsed_secs = time_elapsed.as_secs();
-                                elapsed_millis = time_elapsed.subsec_millis() / 1000;
+                                elapsed_millis = time_elapsed.subsec_millis();
                             }
                             application_clone.get_feedback().info(format!(
-                                "Worker {} finished executing after {}.{} s.",
+                                "Worker {} finished executing after {}s {}ms",
                                 id, elapsed_secs, elapsed_millis
                             ));
                         }

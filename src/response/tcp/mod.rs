@@ -25,32 +25,49 @@ impl Dispatcher {
         let mut temp_buffer = [0; 512];
         let mut buffer: Vec<u8> = Vec::new();
         let config = application.get_config();
+        let mut acc_read_size: u32 = 0;
 
         if let Ok(read_size) = stream.read(&mut temp_buffer) {
+            let mut abort = false;
             // Move all non-empty values to new buffer
             for value in temp_buffer.iter() {
+                acc_read_size = acc_read_size + 1;
                 if value != &0 {
                     buffer.push(*value);
+                } else {
+                    abort = true;
+                    break;
                 }
                 if buffer.len() > config.tcp_limit {
+                    abort = true;
                     break;
                 }
             }
 
             // Did we read the maximum number of bytes and does the limit exceed this?
-            if read_size == 512 && config.tcp_limit > 512 {
+            if !abort && read_size == 512 && config.tcp_limit > 512 {
                 loop {
                     match stream.read(&mut temp_buffer) {
                         Ok(read_size) => {
+                            let mut abort = false;
+
                             // Move all non-empty values to new buffer
                             for value in temp_buffer.iter() {
+                                acc_read_size = acc_read_size + 1;
                                 if value != &0 {
                                     buffer.push(*value);
+                                } else {
+                                    abort = true;
+                                    break;
+                                }
+                                if buffer.len() > config.tcp_limit {
+                                    abort = true;
+                                    break;
                                 }
                             }
 
                             // If we reach the end of the buffer or buffer length exceeds TCP limit
-                            if read_size < 512 {
+                            if abort || read_size < 512 {
                                 break;
                             }
                             if buffer.len() > config.tcp_limit {
@@ -124,9 +141,10 @@ impl Dispatcher {
                     ));
                 }
             } else {
-                application
-                    .get_feedback()
-                    .info("TCP stream was empty".to_string());
+                application.get_feedback().info(format!(
+                    "TCP stream was empty, accumulated read size: {}",
+                    acc_read_size
+                ));
             }
         } else {
             application
