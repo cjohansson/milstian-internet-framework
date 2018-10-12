@@ -34,13 +34,10 @@ impl Dispatcher {
                 acc_read_size = acc_read_size + 1;
                 if value != &0 {
                     buffer.push(*value);
-                } else {
-                    abort = true;
-                    break;
-                }
-                if buffer.len() > config.tcp_limit {
-                    abort = true;
-                    break;
+                    if buffer.len() > config.tcp_limit {
+                        abort = true;
+                        break;
+                    }
                 }
             }
 
@@ -56,13 +53,10 @@ impl Dispatcher {
                                 acc_read_size = acc_read_size + 1;
                                 if value != &0 {
                                     buffer.push(*value);
-                                } else {
-                                    abort = true;
-                                    break;
-                                }
-                                if buffer.len() > config.tcp_limit {
-                                    abort = true;
-                                    break;
+                                    if buffer.len() > config.tcp_limit {
+                                        abort = true;
+                                        break;
+                                    }
                                 }
                             }
 
