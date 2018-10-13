@@ -28,6 +28,7 @@ impl ResponderInterface for Responder {
         _request_message: &request::Message,
         application: &Application,
         _socket: &SocketAddr,
+        _overflow_bytes: &u8,
     ) -> bool {
         let filename = format!(
             "{}/{}",
@@ -53,6 +54,7 @@ impl ResponderInterface for Responder {
         request_message: &request::Message,
         application: &Application,
         _socket: &SocketAddr,
+        _overflow_bytes: &u8,
     ) -> Result<response::Message, String> {
         if let Some(filename) = &self.filename {
             let mut response =
@@ -100,17 +102,20 @@ mod tests {
         assert!(responder.matches(
             &request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.0").unwrap(),
             &application,
-            &socket
+            &socket,
+            &0
         ));
         assert!(responder.matches(
             &request::Message::from_tcp_stream(b"GET /index3.htm HTTP/1.0").unwrap(),
             &application,
-            &socket
+            &socket,
+            &0
         ));
         assert!(responder.matches(
             &request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.1").unwrap(),
             &application,
-            &socket
+            &socket,
+            &0
         ));
 
         let config = Config {
@@ -129,7 +134,8 @@ mod tests {
         assert!(!responder.matches(
             &request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.0").unwrap(),
             &application,
-            &socket
+            &socket,
+            &0
         ));
     }
 
@@ -162,7 +168,7 @@ mod tests {
         let request =
             request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.1\r\n\r\n").unwrap();
 
-        let matches = responder.matches(&request, &application, &socket);
+        let matches = responder.matches(&request, &application, &socket, &0);
         assert!(matches);
 
         let mut headers: HashMap<String, String> = HashMap::new();
@@ -200,7 +206,7 @@ mod tests {
         ).to_bytes();
 
         let given_response = responder
-            .respond(&request, &application, &socket)
+            .respond(&request, &application, &socket, &0)
             .unwrap()
             .to_bytes();
         assert_eq!(expected_response, given_response);

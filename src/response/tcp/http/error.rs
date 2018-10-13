@@ -25,6 +25,7 @@ impl ResponderInterface for Responder {
         _request_message: &request::Message,
         _application: &Application,
         _socket: &SocketAddr,
+        _overflow_bytes: &u8,
     ) -> bool {
         true
     }
@@ -34,6 +35,7 @@ impl ResponderInterface for Responder {
         request_message: &request::Message,
         _application: &Application,
         _socket: &SocketAddr,
+        _overflow_bytes: &u8,
     ) -> Result<response::Message, String> {
         let status_code = "500 Internal Server Error";
         let protocol = request::Message::get_protocol_text(&request_message.request_line.protocol);
@@ -82,7 +84,8 @@ mod tests {
                 &request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.0")
                     .expect("Expecting index2.htm response"),
                 &application,
-                &socket
+                &socket,
+                &0
             )
         );
         assert!(
@@ -90,7 +93,8 @@ mod tests {
                 &request::Message::from_tcp_stream(b"GET /index3.htm HTTP/1.0")
                     .expect("Expecting index3.htm response"),
                 &application,
-                &socket
+                &socket,
+                &0
             )
         );
         assert!(
@@ -98,7 +102,8 @@ mod tests {
                 &request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.1")
                     .expect("Expecting index.htm response"),
                 &application,
-                &socket
+                &socket,
+                &0
             )
         );
     }
@@ -124,7 +129,7 @@ mod tests {
         let response_body = String::new();
         let request =
             request::Message::from_tcp_stream(b"GET /index2.htm HTTP/1.1\r\n\r\n").unwrap();
-        let matches = responder.matches(&request, &application, &socket);
+        let matches = responder.matches(&request, &application, &socket, &0);
         assert!(matches);
 
         let headers: HashMap<String, String> = HashMap::new();
@@ -136,7 +141,10 @@ mod tests {
             response_body.into_bytes(),
         ).to_bytes();
 
-        let given_response = responder.respond(&request, &application, &socket).unwrap().to_bytes();
+        let given_response = responder
+            .respond(&request, &application, &socket, &0)
+            .unwrap()
+            .to_bytes();
         assert_eq!(expected_response, given_response);
     }
 }

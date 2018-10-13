@@ -30,6 +30,7 @@ impl Dispatcher {
         request: &[u8],
         _application: &Application,
         _socket: &SocketAddr,
+        _overflow_bytes: &u8,
     ) -> bool {
         if let Some(request_message) = request::Message::from_tcp_stream(request) {
             self.request_message = Some(request_message);
@@ -45,12 +46,13 @@ impl Dispatcher {
         application: &Application,
         socket: &SocketAddr,
         responders: Vec<Box<ResponderInterface + Send>>,
+        overflow_bytes: &u8,
     ) -> Result<(Vec<u8>, String), String> {
         if let Some(request_message) = &self.request_message {
             for mut responder in responders.into_iter() {
-                if responder.matches(&request_message, &application, &socket) {
+                if responder.matches(&request_message, &application, &socket, &overflow_bytes) {
                     if let Ok(mut response) =
-                        responder.respond(&request_message, &application, &socket)
+                        responder.respond(&request_message, &application, &socket, &overflow_bytes)
                     {
                         let mut log = String::new();
                         if let Some(request_message) = &self.request_message {
@@ -83,12 +85,13 @@ impl Dispatcher {
 }
 
 pub trait ResponderInterface: ResponderInterfaceCopy {
-    fn matches(&mut self, &request::Message, &Application, &SocketAddr) -> bool;
+    fn matches(&mut self, &request::Message, &Application, &SocketAddr, &u8) -> bool;
     fn respond(
         &self,
         &request::Message,
         &Application,
         &SocketAddr,
+        &u8,
     ) -> Result<response::Message, String>;
 }
 

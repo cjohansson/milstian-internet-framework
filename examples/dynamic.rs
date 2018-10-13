@@ -26,6 +26,7 @@ impl ResponderInterface for Responder {
         request_message: &request::Message,
         _application: &Application,
         _socket: &SocketAddr,
+        _overflow_bytes: &u8,
     ) -> bool {
         match request_message.request_line.query_arguments.get("test") {
             Some(value) => {
@@ -43,6 +44,7 @@ impl ResponderInterface for Responder {
         request_message: &request::Message,
         _application: &Application,
         _socket: &SocketAddr,
+        _overflow_bytes: &u8,
     ) -> Result<response::Message, String> {
         if let Some(route) = &self.route {
             let protocol =

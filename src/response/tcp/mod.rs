@@ -26,7 +26,7 @@ impl Dispatcher {
         let mut buffer: Vec<u8> = Vec::new();
         let config = application.get_config();
         let mut acc_read_size: u32 = 0;
-        let mut exceeding_bytes = 0;
+        let mut overflow_bytes = 0;
 
         loop {
             match stream.read(&mut temp_buffer) {
@@ -38,7 +38,7 @@ impl Dispatcher {
                             if buffer.len() < config.tcp_limit {
                                 buffer.push(*value);
                             } else {
-                                exceeding_bytes = exceeding_bytes + 1;
+                                overflow_bytes = overflow_bytes + 1;
                             }
                         }
                     }
@@ -63,11 +63,17 @@ impl Dispatcher {
             let mut log = String::new();
             let mut http_dispatcher = http::Dispatcher::new();
 
-            if http_dispatcher.matches(&buffer, &application, &socket) {
+            if http_dispatcher.matches(&buffer, &application, &socket, &overflow_bytes) {
                 application
                     .get_feedback()
                     .info(format!("Request was successfully decoded as HTTP"));
-                match http_dispatcher.respond(&buffer, &application, &socket, responders) {
+                match http_dispatcher.respond(
+                    &buffer,
+                    &application,
+                    &socket,
+                    responders,
+                    &overflow_bytes,
+                ) {
                     Ok((http_response, http_log)) => {
                         response = http_response;
                         log = http_log;

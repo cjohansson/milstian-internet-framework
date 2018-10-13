@@ -263,6 +263,7 @@ impl ResponderInterface for Responder {
         request_message: &request::Message,
         application: &Application,
         _socket: &SocketAddr,
+        _overflow_bytes: &u8,
     ) -> bool {
         if let Some(filename) = Responder::get_matching_filename(&request_message, &application) {
             self.filename = Some(filename);
@@ -277,6 +278,7 @@ impl ResponderInterface for Responder {
         request_message: &request::Message,
         application: &Application,
         _socket: &SocketAddr,
+        _overflow_bytes: &u8,
     ) -> Result<response::Message, String> {
         // Does filename exist?
         if let Some(filename) = &self.filename {
@@ -315,12 +317,14 @@ mod tests {
         assert!(responder.matches(
             &request::Message::from_tcp_stream(b"GET / HTTP/1.0").unwrap(),
             &application,
-            &socket
+            &socket,
+            &0
         ));
         assert!(responder.matches(
             &request::Message::from_tcp_stream(b"GET /index.htm HTTP/1.0").unwrap(),
             &application,
-            &socket
+            &socket,
+            &0
         ));
 
         // POST request with random header and null bytes
@@ -331,23 +335,27 @@ mod tests {
         assert!(responder.matches(
             &request::Message::from_tcp_stream(&request).unwrap(),
             &application,
-            &socket
+            &socket,
+            &0
         ));
 
         assert!(!responder.matches(
             &request::Message::from_tcp_stream(b"GET /../README.md HTTP/1.0").unwrap(),
             &application,
-            &socket
+            &socket,
+            &0
         ));
         assert!(!responder.matches(
             &request::Message::from_tcp_stream(b"GET /.DS_Store HTTP/1.0").unwrap(),
             &application,
-            &socket
+            &socket,
+            &0
         ));
         assert!(!responder.matches(
             &request::Message::from_tcp_stream(b"GET /test.htm HTTP/1.1").unwrap(),
             &application,
-            &socket
+            &socket,
+            &0
         ));
     }
 
@@ -377,7 +385,7 @@ mod tests {
         file.read_to_string(&mut response_body).unwrap();
 
         let request = request::Message::from_tcp_stream(b"GET / HTTP/1.1\r\n\r\n").unwrap();
-        let matches = responder.matches(&request, &application, &socket);
+        let matches = responder.matches(&request, &application, &socket, &0);
         assert!(matches);
 
         let mut headers: HashMap<String, String> = HashMap::new();
@@ -413,7 +421,7 @@ mod tests {
         ).to_bytes();
 
         let given_response = responder
-            .respond(&request, &application, &socket)
+            .respond(&request, &application, &socket, &0)
             .unwrap()
             .to_bytes();
         assert_eq!(expected_response, given_response);
@@ -460,7 +468,7 @@ mod tests {
                 let request = request::Message::from_tcp_stream(request_string.as_bytes()).unwrap();
 
                 let given_response = responder
-                    .respond(&request, &application, &socket)
+                    .respond(&request, &application, &socket, &0)
                     .unwrap()
                     .to_bytes();
                 /* println!(
@@ -516,7 +524,7 @@ mod tests {
                 );
                 let request = request::Message::from_tcp_stream(request_string.as_bytes()).unwrap();
                 let given_response = responder
-                    .respond(&request, &application, &socket)
+                    .respond(&request, &application, &socket, &0)
                     .unwrap()
                     .to_bytes();
 
@@ -571,7 +579,7 @@ mod tests {
                 ).to_bytes();
 
                 let given_response = responder
-                    .respond(&request, &application, &socket)
+                    .respond(&request, &application, &socket, &0)
                     .unwrap()
                     .to_bytes();
                 assert_eq!(expected_response, given_response);
@@ -623,7 +631,7 @@ mod tests {
                 );
                 let request = request::Message::from_tcp_stream(request_string.as_bytes()).unwrap();
                 let given_response = responder
-                    .respond(&request, &application, &socket)
+                    .respond(&request, &application, &socket, &0)
                     .unwrap()
                     .to_bytes();
 
