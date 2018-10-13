@@ -26,124 +26,94 @@ impl Dispatcher {
         let mut buffer: Vec<u8> = Vec::new();
         let config = application.get_config();
         let mut acc_read_size: u32 = 0;
+        let mut exceeding_bytes = 0;
 
-        if let Ok(read_size) = stream.read(&mut temp_buffer) {
-            let mut abort = false;
-            // Move all non-empty values to new buffer
-            for value in temp_buffer.iter() {
-                acc_read_size = acc_read_size + 1;
-                if value != &0 {
-                    buffer.push(*value);
-                    if buffer.len() > config.tcp_limit {
-                        abort = true;
+        loop {
+            match stream.read(&mut temp_buffer) {
+                Ok(read_size) => {
+                    // Move all non-empty values to new buffer
+                    for value in temp_buffer.iter() {
+                        acc_read_size = acc_read_size + 1;
+                        if value != &0 {
+                            if buffer.len() < config.tcp_limit {
+                                buffer.push(*value);
+                            } else {
+                                exceeding_bytes = exceeding_bytes + 1;
+                            }
+                        }
+                    }
+
+                    // Did we reach end of stream?
+                    if read_size < 512 {
                         break;
                     }
                 }
-            }
-
-            // Did we read the maximum number of bytes and does the limit exceed this?
-            if !abort && read_size == 512 && config.tcp_limit > 512 {
-                loop {
-                    match stream.read(&mut temp_buffer) {
-                        Ok(read_size) => {
-                            let mut abort = false;
-
-                            // Move all non-empty values to new buffer
-                            for value in temp_buffer.iter() {
-                                acc_read_size = acc_read_size + 1;
-                                if value != &0 {
-                                    buffer.push(*value);
-                                    if buffer.len() > config.tcp_limit {
-                                        abort = true;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            // If we reach the end of the buffer or buffer length exceeds TCP limit
-                            if abort || read_size < 512 {
-                                break;
-                            }
-                            if buffer.len() > config.tcp_limit {
-                                application.get_feedback().info(format!(
-                                    "TCP stream exceeds size {}, aborting parse",
-                                    config.tcp_limit
-                                ));
-                                break;
-                            }
-                        }
-                        Err(error) => {
-                            application
-                                .get_feedback()
-                                .error(format!("Failed to read from TCP stream, error: {}", error));
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if buffer.len() > 0 {
-                // println!("Found non-empty TCP blog {:?} b= {:?}", str::from_utf8(&buffer), buffer);
-                let mut response = Vec::new();
-                let mut log = String::new();
-                let mut http_dispatcher = http::Dispatcher::new();
-
-                if http_dispatcher.matches(&buffer, &application, &socket) {
+                Err(error) => {
                     application
                         .get_feedback()
-                        .info(format!("Request was successfully decoded as HTTP"));
-                    match http_dispatcher.respond(&buffer, &application, &socket, responders) {
-                        Ok((http_response, http_log)) => {
-                            response = http_response;
-                            log = http_log;
-                            application
-                                .get_feedback()
-                                .info(format!("Found non-empty HTTP response to TCP stream"));
-                        }
-                        Err(error) => {
-                            application
-                                .get_feedback()
-                                .error(format!("Got empty HTTP response! Error: {}", error));
-                        }
-                    }
-                } else {
-                    application
-                        .get_feedback()
-                        .info(format!("Request could not be decoded as HTTP"));
+                        .error(format!("Failed to read from TCP stream, error: {}", error));
+                    break;
                 }
+            }
+        }
 
-                if !response.is_empty() {
-                    application.get_feedback().info(log);
-                    match stream.write(&response) {
-                        Ok(_) => {
-                            if let Err(error) = stream.flush() {
-                                application
-                                    .get_feedback()
-                                    .info(format!("Failed to flush TCP stream, error: {}", error));
-                            }
-                        }
-                        Err(error) => {
-                            application
-                                .get_feedback()
-                                .error(format!("Failed to write to TCP stream, error: {}", error));
-                        }
+        if buffer.len() > 0 {
+            // println!("Found non-empty TCP blog {:?} b= {:?}", str::from_utf8(&buffer), buffer);
+            let mut response = Vec::new();
+            let mut log = String::new();
+            let mut http_dispatcher = http::Dispatcher::new();
+
+            if http_dispatcher.matches(&buffer, &application, &socket) {
+                application
+                    .get_feedback()
+                    .info(format!("Request was successfully decoded as HTTP"));
+                match http_dispatcher.respond(&buffer, &application, &socket, responders) {
+                    Ok((http_response, http_log)) => {
+                        response = http_response;
+                        log = http_log;
+                        application
+                            .get_feedback()
+                            .info(format!("Found non-empty HTTP response to TCP stream"));
                     }
-                } else {
-                    application.get_feedback().error(format!(
-                        "Found no response for TCP stream {:?}",
-                        str::from_utf8(&buffer)
-                    ));
+                    Err(error) => {
+                        application
+                            .get_feedback()
+                            .error(format!("Got empty HTTP response! Error: {}", error));
+                    }
                 }
             } else {
-                application.get_feedback().info(format!(
-                    "TCP stream was empty, accumulated read size: {}",
-                    acc_read_size
+                application
+                    .get_feedback()
+                    .info(format!("Request could not be decoded as HTTP"));
+            }
+
+            if !response.is_empty() {
+                application.get_feedback().info(log);
+                match stream.write(&response) {
+                    Ok(_) => {
+                        if let Err(error) = stream.flush() {
+                            application
+                                .get_feedback()
+                                .info(format!("Failed to flush TCP stream, error: {}", error));
+                        }
+                    }
+                    Err(error) => {
+                        application
+                            .get_feedback()
+                            .error(format!("Failed to write to TCP stream, error: {}", error));
+                    }
+                }
+            } else {
+                application.get_feedback().error(format!(
+                    "Found no response for TCP stream {:?}",
+                    str::from_utf8(&buffer)
                 ));
             }
         } else {
-            application
-                .get_feedback()
-                .info("Failed to read from TCP stream".to_string());
+            application.get_feedback().info(format!(
+                "TCP stream was empty, accumulated read size: {}",
+                acc_read_size
+            ));
         }
     }
 }
