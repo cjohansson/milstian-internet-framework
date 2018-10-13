@@ -14,7 +14,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! milstian_internet_framework = "0.1.*"
+//! milstian_internet_framework = "*"
 //! ```
 //! And this in your crate root:
 //! ```rust,dont_run
