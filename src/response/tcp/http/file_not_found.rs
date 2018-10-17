@@ -28,7 +28,7 @@ impl ResponderInterface for Responder {
         _request_message: &request::Message,
         application: &Application,
         _socket: &SocketAddr,
-        _overflow_bytes: &u8,
+        _overflow_bytes: &u64,
     ) -> bool {
         let filename = format!(
             "{}/{}",
@@ -54,7 +54,7 @@ impl ResponderInterface for Responder {
         request_message: &request::Message,
         application: &Application,
         _socket: &SocketAddr,
-        _overflow_bytes: &u8,
+        _overflow_bytes: &u64,
     ) -> Result<response::Message, String> {
         if let Some(filename) = &self.filename {
             let mut response =

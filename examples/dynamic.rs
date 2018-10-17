@@ -26,7 +26,7 @@ impl ResponderInterface for Responder {
         request_message: &request::Message,
         _application: &Application,
         _socket: &SocketAddr,
-        _overflow_bytes: &u8,
+        _overflow_bytes: &u64,
     ) -> bool {
         match request_message.request_line.query_arguments.get("test") {
             Some(value) => {
@@ -44,13 +44,14 @@ impl ResponderInterface for Responder {
         request_message: &request::Message,
         _application: &Application,
         _socket: &SocketAddr,
-        _overflow_bytes: &u8,
+        overflow_bytes: &u64,
     ) -> Result<response::Message, String> {
         if let Some(route) = &self.route {
             let protocol =
                 request::Message::get_protocol_text(&request_message.request_line.protocol);
             let mut headers: HashMap<String, String> = HashMap::new();
             headers.insert("Content-Type".to_string(), "text/html".to_string());
+
             let upload = match request_message.body {
                 BodyContentType::MultiPart(ref body) => match body.get(&"file".to_string()) {
                     Some(value) => match String::from_utf8(value.body.clone()) {
@@ -62,7 +63,23 @@ impl ResponderInterface for Responder {
                 _ => "no data".to_string(),
             };
 
-            let output = format!("<html><head><title>Milstian Internet Framework - Dynamic Example</title><link rel='stylesheet' href='/css/style.css' /></head><body><div class='wrapper'><h1>Milstian Web Framework</h1><img alt='' src='/img/logo1-modified.jpg' /><p><strong>Query argument:</strong> {}</p><div><strong>File upload:</strong><br /><pre>{}</pre></div><h2>Dynamic Test</h2><form action='' method='post' enctype='multipart/form-data'><fieldset><legend>File upload</legend><div><label>Select file<br /><input type='file' name='file' /></label></div><div><input type='submit' value='Upload' /></div></fieldset></form></div></body></html>", route, &upload);
+            let upload2 = match request_message.body {
+                BodyContentType::MultiPart(ref body) => match body.get(&"file2".to_string()) {
+                    Some(value) => match String::from_utf8(value.body.clone()) {
+                        Ok(utf8_value) => utf8_value,
+                        _ => format!("no UTF-8 file data in: {:?}", &value.body),
+                    },
+                    _ => format!("no file data in {:?}", request_message),
+                },
+                _ => "no data".to_string(),
+            };
+
+            let mut overflow_upload = "Upload did not overflow server byte limit!";
+            if overflow_bytes > &0 {
+                overflow_upload = "Your upload exceeded server byte limit!";
+            }
+
+            let output = format!("<html><head><title>Milstian Internet Framework - Dynamic Example</title><link rel='stylesheet' href='/css/style.css' /></head><body><div class='wrapper'><h1>Milstian Web Framework</h1><img alt='' src='/img/logo1-modified.jpg' /><p><strong>Query argument:</strong> {}</p><div><strong>File upload 1:</strong><br /><pre>{}</pre></div><div><strong>File upload 2:</strong><br /><pre>{}</pre></div><h2>Dynamic Test</h2><form action='' method='post' enctype='multipart/form-data'><fieldset><legend>File upload</legend><div><label>Select file 1<br /><input type='file' name='file' /></label></div><div><label>Select file 2<br /><input type='file' name='file2' /></label></div><p>{}</p><div><input type='submit' value='Upload' /></div></fieldset></form></div></body></html>", route, &upload, &upload2, &overflow_upload);
 
             return Ok(response::Message::new(
                 protocol.to_string(),

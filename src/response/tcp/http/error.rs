@@ -25,7 +25,7 @@ impl ResponderInterface for Responder {
         _request_message: &request::Message,
         _application: &Application,
         _socket: &SocketAddr,
-        _overflow_bytes: &u8,
+        _overflow_bytes: &u64,
     ) -> bool {
         true
     }
@@ -35,7 +35,7 @@ impl ResponderInterface for Responder {
         request_message: &request::Message,
         _application: &Application,
         _socket: &SocketAddr,
-        _overflow_bytes: &u8,
+        _overflow_bytes: &u64,
     ) -> Result<response::Message, String> {
         let status_code = "500 Internal Server Error";
         let protocol = request::Message::get_protocol_text(&request_message.request_line.protocol);

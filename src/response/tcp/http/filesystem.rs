@@ -263,7 +263,7 @@ impl ResponderInterface for Responder {
         request_message: &request::Message,
         application: &Application,
         _socket: &SocketAddr,
-        _overflow_bytes: &u8,
+        _overflow_bytes: &u64,
     ) -> bool {
         if let Some(filename) = Responder::get_matching_filename(&request_message, &application) {
             self.filename = Some(filename);
@@ -278,7 +278,7 @@ impl ResponderInterface for Responder {
         request_message: &request::Message,
         application: &Application,
         _socket: &SocketAddr,
-        _overflow_bytes: &u8,
+        _overflow_bytes: &u64,
     ) -> Result<response::Message, String> {
         // Does filename exist?
         if let Some(filename) = &self.filename {

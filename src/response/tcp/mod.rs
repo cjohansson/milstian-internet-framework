@@ -25,8 +25,8 @@ impl Dispatcher {
         let mut temp_buffer = [0; 512];
         let mut buffer: Vec<u8> = Vec::new();
         let config = application.get_config();
-        let mut acc_read_size: u32 = 0;
-        let mut overflow_bytes = 0;
+        let mut acc_read_size: u64 = 0;
+        let mut overflow_bytes: u64 = 0;
 
         loop {
             match stream.read(&mut temp_buffer) {
