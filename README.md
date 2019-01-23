@@ -124,6 +124,7 @@ fn main() {
 ## Docs
 
 * [Benchmark](docs/BENCHMARK.md)
+* [NGINX](docs/NGINX.md)
 * [Issues](docs/ISSUES.md)
 
 ## License
