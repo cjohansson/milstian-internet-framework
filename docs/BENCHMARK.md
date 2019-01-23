@@ -17,7 +17,7 @@ process 2: $ ab -n 10000 -c 10 http://localhost:8888/
 
 ### Static response via NGINX virtual host proxy
 
-This requires a virtual host proxy setup as described [here](../NGINX.md).
+This requires a virtual host proxy setup as described [here](NGINX.md).
 
 ``` bash
 process 1: $ cargo run --example static localhost 8888 10 index.htm ./html/ 404.htm 1024
@@ -38,7 +38,7 @@ process 2: $ ab -n 10000 -c 10 http://localhost:8888/?test=abcdef
 
 ### Simple dynamic response via NGINX virtual host proxy
 
-This requires a virtual host proxy setup as described [here](../NGINX.md).
+This requires a virtual host proxy setup as described [here](NGINX.md).
 
 ``` bash
 process 1: $ cargo run --example dynamic localhost 8888 10 index.htm ./html/ 404.htm 1024
