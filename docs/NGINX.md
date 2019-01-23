@@ -8,7 +8,6 @@ Add a location logic similar to this inside a `server` block:
 
 ```nginx
     location / {
-        rewrite ^/route/?(.*)$ /$1 break;
         proxy_pass  http://localhost:8888;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
