@@ -32,7 +32,7 @@ impl TCP {
         let listener = TcpListener::bind(&path);
         application
             .get_feedback()
-            .info(format!("Listening on TCP connections to {}", &path));
+            .info(format!("Listening on HTTP requests via TCP to {}", &path));
 
         match listener {
             Ok(listener) => {

@@ -29,7 +29,7 @@ impl<'a> Pool<'a> {
         // If it fails program will crash deliberately
         self.sender
             .send(Message::NewJob(job))
-            .expect("Failed to send job down to channel");
+            .expect("Failed to send job down the channel");
     }
 
     /// Create a new mutex channel with specified number of receivers
