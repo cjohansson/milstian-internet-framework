@@ -25,11 +25,19 @@ impl<'a> Pool<'a> {
         // Place job inside a Box
         let job = Box::new(f);
 
+        &self.application
+            .get_feedback()
+            .info("Sending job down the channel".to_string());
+
         // Send a NewJob Message down the channel
         // If it fails program will crash deliberately
-        self.sender
-            .send(Message::NewJob(job))
-            .expect("Failed to send job down the channel");
+        let sender_clone = self.sender.clone();
+        let message = Message::NewJob(job);
+        thread::spawn(move || {
+            sender_clone
+                .send(message)
+                .expect("Failed to send job down the channel");
+        });
     }
 
     /// Create a new mutex channel with specified number of receivers
@@ -107,6 +115,7 @@ pub struct Worker {
 }
 
 impl<'a> Worker {
+    /// Start a listening process on channel, executing any incoming jobs.
     fn new(
         application: &'a Application,
         id: usize,
@@ -122,8 +131,11 @@ impl<'a> Worker {
                             let start = SystemTime::now();
                             application_clone
                                 .get_feedback()
-                                .info(format!("Worker {} started executing", id));
+                                .info(format!("Worker {} started executing job from channel", id));
                             job.call_box();
+
+                            // TODO Add time-out for process?
+
                             let mut elapsed_secs = 0;
                             let mut elapsed_millis = 0;
                             if let Ok(time_elapsed) = start.elapsed() {

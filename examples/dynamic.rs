@@ -2,6 +2,8 @@ extern crate milstian_internet_framework;
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::thread;
+use std::time::Duration;
 
 use milstian_internet_framework::application_layer::http::request;
 use milstian_internet_framework::application_layer::http::request::BodyContentType;
@@ -73,6 +75,8 @@ impl ResponderInterface for Responder {
                 },
                 _ => "no data".to_string(),
             };
+
+            thread::sleep(Duration::from_secs(2));
 
             let mut overflow_upload = "Upload did not overflow server byte limit!";
             if overflow_bytes > &0 {
