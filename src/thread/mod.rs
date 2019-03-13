@@ -1,6 +1,7 @@
 //! # Handles the workers
 
 // TODO Add tests to this file
+
 use std::time::SystemTime;
 
 use std::sync::mpsc;
@@ -22,17 +23,17 @@ impl<'a> Pool<'a> {
     where
         F: FnOnce() + Send + 'static,
     {
-        // Place job inside a Box
-        let job = Box::new(f);
+        // Place job inside a Box inside a message
+        let message = Message::NewJob(Box::new(f));
 
-        &self.application
+        &self
+            .application
             .get_feedback()
             .info("Sending job down the channel".to_string());
 
         // Send a NewJob Message down the channel
-        // If it fails program will crash deliberately
+        // If it fails thread? will crash deliberately
         let sender_clone = self.sender.clone();
-        let message = Message::NewJob(job);
         thread::spawn(move || {
             sender_clone
                 .send(message)
@@ -123,36 +124,35 @@ impl<'a> Worker {
     ) -> Worker {
         let application_clone = application.clone();
 
-        let thread = thread::spawn(move || loop {
-            if let Ok(lock) = receiver.lock() {
-                if let Ok(message) = lock.recv() {
-                    match message {
-                        Message::NewJob(job) => {
-                            let start = SystemTime::now();
-                            application_clone
-                                .get_feedback()
-                                .info(format!("Worker {} started executing job from channel", id));
-                            job.call_box();
+        let thread = thread::spawn(move || {
+            loop {
+                let message = receiver.lock().unwrap().recv().unwrap();
+                match message {
+                    Message::NewJob(job) => {
+                        let start = SystemTime::now();
+                        application_clone
+                            .get_feedback()
+                            .info(format!("Worker {} started executing job from channel", id));
+                        job.call_box();
 
-                            // TODO Add time-out for process?
+                        // TODO Add time-out for process?
 
-                            let mut elapsed_secs = 0;
-                            let mut elapsed_millis = 0;
-                            if let Ok(time_elapsed) = start.elapsed() {
-                                elapsed_secs = time_elapsed.as_secs();
-                                elapsed_millis = time_elapsed.subsec_millis();
-                            }
-                            application_clone.get_feedback().info(format!(
-                                "Worker {} finished executing after {}s {}ms",
-                                id, elapsed_secs, elapsed_millis
-                            ));
+                        let mut elapsed_secs = 0;
+                        let mut elapsed_millis = 0;
+                        if let Ok(time_elapsed) = start.elapsed() {
+                            elapsed_secs = time_elapsed.as_secs();
+                            elapsed_millis = time_elapsed.subsec_millis();
                         }
-                        Message::Terminate => {
-                            application_clone
-                                .get_feedback()
-                                .info(format!("Worker {} was told to terminate", id));
-                            break;
-                        }
+                        application_clone.get_feedback().info(format!(
+                            "Worker {} finished executing after {}s {}ms",
+                            id, elapsed_secs, elapsed_millis
+                        ));
+                    }
+                    Message::Terminate => {
+                        application_clone
+                            .get_feedback()
+                            .info(format!("Worker {} was told to terminate", id));
+                        break;
                     }
                 }
             }

@@ -76,7 +76,8 @@ impl ResponderInterface for Responder {
                 _ => "no data".to_string(),
             };
 
-            thread::sleep(Duration::from_secs(2));
+            // NOTE uncomment to test concurrency
+            // thread::sleep(Duration::from_secs(2));
 
             let mut overflow_upload = "Upload did not overflow server byte limit!";
             if overflow_bytes > &0 {

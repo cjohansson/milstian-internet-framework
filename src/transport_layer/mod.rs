@@ -45,6 +45,9 @@ impl TCP {
                                 .info(format!("Received new TCP stream from {}", socket));
                             let application = application.clone();
                             let responders = responders.clone();
+                            application
+                                .get_feedback()
+                                .info("Sending stream as HTTP job to pool".to_string());
                             pool.execute(move || {
                                 Dispatcher::http(stream, socket, application, responders);
                             });
