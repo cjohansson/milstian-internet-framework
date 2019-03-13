@@ -13,7 +13,7 @@ process 1: $ cargo run --example static localhost 8888 10 index.htm ./html/ 404.
 process 2: $ ab -n 10000 -c 10 http://localhost:8888/
 ```
 
-*Expected mean:* 4ms
+*Expected total mean:* 2ms
 
 ### Static response via NGINX virtual host proxy
 
@@ -21,10 +21,10 @@ This requires a virtual host proxy setup as described [here](NGINX.md).
 
 ``` bash
 process 1: $ cargo run --example static localhost 8888 10 index.htm ./html/ 404.htm 1024
-process 2: $ ab -n 10000 -c 10 http://milstian.test/
+process 2: $ ab -n 5000 -c 10 http://milstian.test/
 ```
 
-*Expected mean:* -
+*Expected total mean:* 3ms
 
 
 ### Simple dynamic response direct to port
@@ -34,7 +34,7 @@ process 1: $ cargo run --example dynamic localhost 8888 10 index.htm ./html/ 404
 process 2: $ ab -n 10000 -c 10 http://localhost:8888/?test=abcdef
 ```
 
-*Expected mean:* 2ms
+*Expected total mean:* 2ms
 
 ### Simple dynamic response via NGINX virtual host proxy
 
@@ -42,10 +42,12 @@ This requires a virtual host proxy setup as described [here](NGINX.md).
 
 ``` bash
 process 1: $ cargo run --example dynamic localhost 8888 10 index.htm ./html/ 404.htm 1024
-process 2: $ ab -n 10000 -c 10 http://milstian.test/?test=abcdef
+process 2: $ ab -n 5000 -c 10 http://milstian.test/?test=abcdef
 ```
 
-*Expected mean:* -
+*Expected total mean:* 3ms
+
+**NOTE** Experiencing some kind of limit in the NGINX proxy once requests pass over 5000, but it seems to be unrelated to milstian.
 
 
 
